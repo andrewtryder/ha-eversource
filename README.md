@@ -14,27 +14,119 @@ Unofficial Home Assistant custom integration for public Eversource electricity t
 - Does not require an Eversource login, account number, API key, or stored credential.
 - Uses the public audience-selection cookie `.SEGMENT=nh`; it is not an authenticated account cookie.
 - Uses exact `Decimal` arithmetic for supply and delivery tariff components.
+- Exposes an all-in variable electricity-rate sensor intended for Home Assistant's Energy dashboard.
+- Keeps the fixed monthly customer charge separate from the per-kWh price.
+
+## Supported tariffs
+
+Version 0.1.x intentionally supports only:
+
+- **Service territory:** New Hampshire
+- **Rate class:** Residential Rate R
+- **Supply:** Eversource default service
+
+Other Eversource territories and rate classes require separately verified public tariff sources and parser strategies before they can be enabled.
 
 ## Installation
 
-Add `https://github.com/andrewtryder/ha-eversource` to HACS as a custom repository of type **Integration**, install **Eversource Rates**, and restart Home Assistant. Or copy `custom_components/eversource_rates` to your Home Assistant configuration directory's `custom_components` folder and restart.
+Add `https://github.com/andrewtryder/ha-eversource` to HACS as a custom repository of type **Integration**, install **Eversource Rates**, and restart Home Assistant.
+
+For a manual installation, copy `custom_components/eversource_rates` to your Home Assistant configuration directory's `custom_components` folder and restart Home Assistant.
 
 ## Configuration
 
 Go to **Settings → Devices & services → Add integration**, select **Eversource Rates**, then select **New Hampshire** and **Residential Rate R**. Setup validates public tariff retrieval before creating the entry.
 
-## Entities and Energy Dashboard
+## Entities
 
-- `sensor.eversource_supply_rate` — variable supply price, USD/kWh.
-- `sensor.eversource_delivery_rate` — sum of variable delivery riders, USD/kWh.
-- `sensor.eversource_total_electricity_rate` — supply plus variable delivery riders, USD/kWh.
-- `sensor.eversource_customer_charge` — fixed monthly charge, USD/month.
+| Entity | Meaning | Intended use |
+| --- | --- | --- |
+| `sensor.eversource_supply_rate` | Eversource supply price in USD/kWh | Reference / diagnostics |
+| `sensor.eversource_delivery_rate` | Sum of variable Eversource delivery charges in USD/kWh | Reference / diagnostics |
+| `sensor.eversource_total_electricity_rate` | Supply + all variable delivery charges in USD/kWh | **Home Assistant Energy dashboard current price** |
+| `sensor.eversource_customer_charge` | Fixed monthly customer charge | Reference only; do not use as a per-kWh price |
 
-Delivery components are diagnostic entities disabled by default. To use tariff pricing, go to **Settings → Dashboards → Energy**, edit **Grid consumption**, choose **Use an entity with current price**, and select **Eversource Total Electricity Rate**. Newly published delivery riders are included in the total immediately; their individual diagnostic entity appears after the integration is reloaded.
+Individual delivery components are also available as diagnostic entities and are disabled by default. Newly published delivery riders are included in the total rate immediately after a successful refresh; a newly discovered rider's individual diagnostic entity appears after the integration is reloaded.
 
-The total electricity-rate sensor intentionally excludes the fixed customer charge. It is the proper current-price input: supply plus all per-kWh delivery components. The monthly customer charge remains separate and is never smeared across electricity use. Energy Dashboard price changes apply to future calculations; this integration does not retroactively correct past costs.
+## Using Eversource Rates with the Home Assistant Energy dashboard
 
-This release intentionally supports only New Hampshire Residential Rate R. Other territories and rate classes will use dedicated parser strategies when they are added.
+This integration provides the **price of electricity**, not your home's electricity-consumption measurement. Home Assistant still needs a separate cumulative energy sensor that records how many kWh you import from the grid. That sensor can come from a smart meter, whole-home energy monitor, inverter, ESPHome device, Shelly, Emporia, utility-meter integration, or another compatible source.
+
+### 1. Confirm you have a grid-consumption sensor
+
+Before configuring pricing, make sure Home Assistant has a suitable grid-import energy sensor. It should normally:
+
+- report cumulative energy rather than instantaneous power;
+- use an energy unit such as `kWh`;
+- be accepted by Home Assistant as a grid-consumption source in the Energy dashboard; and
+- be recorded by Home Assistant's Recorder so long-term statistics can be generated.
+
+A sensor reporting watts (`W`) or kilowatts (`kW`) is a **power** sensor and cannot be used directly as cumulative grid energy without first converting/integrating it to energy.
+
+### 2. Add or edit grid consumption
+
+1. Open **Settings → Dashboards → Energy**.
+2. Under **Electricity grid**, add a grid-consumption source or edit your existing grid-consumption source.
+3. Select your home's cumulative grid-import energy sensor as the **consumption** entity.
+4. For electricity cost, choose **Use an entity with current price**.
+5. Select **Eversource Total Electricity Rate** (`sensor.eversource_total_electricity_rate`).
+6. Save the Energy configuration.
+
+If you already have grid consumption configured, do not add a second copy of the same consumption sensor just to use Eversource pricing. Edit the existing grid-consumption source and assign the Eversource total-rate entity as its current-price source.
+
+### 3. Use the total rate, not the individual components
+
+The price supplied to the Energy dashboard should be:
+
+```text
+Eversource supply rate
++ all variable Eversource delivery charges
+= sensor.eversource_total_electricity_rate
+```
+
+Do **not** select only `sensor.eversource_supply_rate`, because that omits delivery charges. Likewise, do not select only `sensor.eversource_delivery_rate`, because that omits supply.
+
+### Fixed monthly customer charge
+
+`sensor.eversource_customer_charge` is intentionally excluded from the Energy dashboard price sensor. A fixed monthly charge is not a per-kWh cost; dividing it across usage would make the apparent electricity price change depending on how much energy you happened to consume that month.
+
+As a result, the Energy dashboard's calculated electricity cost is best understood as your **variable energy cost**. It will not exactly reproduce the final Eversource bill because the fixed monthly customer charge is tracked separately, and future tariff structures may contain other non-variable bill items.
+
+### When rates change
+
+The integration checks Eversource periodically and updates the price sensor when the public tariff changes. Home Assistant then uses the current price for energy consumed after that update. The integration does not rewrite historical Energy dashboard costs or retroactively rebill older consumption periods.
+
+This is especially important when an Eversource billing period crosses a tariff effective date: the utility bill may split usage across old and new tariff periods, while Home Assistant records costs based on the rate states it observed over time.
+
+### Verifying the setup
+
+After configuration:
+
+1. Open **Developer tools → States**.
+2. Find `sensor.eversource_total_electricity_rate`.
+3. Confirm it has a numeric value and a unit of `USD/kWh`.
+4. Return to **Settings → Dashboards → Energy** and verify the entity is selected as the current price for your grid-consumption source.
+5. Allow Home Assistant time to collect additional consumption statistics before expecting cost data to appear in the Energy dashboard.
+
+If the Eversource rate sensor is available but cost data is missing, first verify that your **consumption sensor** itself is valid for the Energy dashboard and is being recorded. This integration cannot calculate Energy dashboard costs without a working kWh consumption source.
+
+## How the tariff is calculated
+
+The integration retrieves Eversource's public supply rate and the individual variable delivery components for the selected tariff. The variable delivery components are normalized to USD/kWh and summed using exact decimal arithmetic.
+
+Conceptually:
+
+```text
+supply rate
++ distribution
++ transmission
++ regulatory adjustments
++ system-benefit charges
++ other per-kWh riders/credits
+= total variable electricity rate
+```
+
+Negative tariff adjustments are preserved as credits. The fixed monthly customer charge is parsed and exposed separately.
 
 ## Privacy, data source, and disclaimer
 
