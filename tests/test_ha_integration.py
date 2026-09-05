@@ -121,14 +121,18 @@ async def test_config_flow_displays_client_errors(
     hass: HomeAssistant, exception: Exception, error: str
 ) -> None:
     """Map public-client failures to translated config-flow errors."""
+    result = await hass.config_entries.flow.async_init(
+        DOMAIN, context={"source": "user"}
+    )
+    result = await hass.config_entries.flow.async_configure(
+        result["flow_id"], {CONF_TERRITORY: "nh"}
+    )
     with patch(
         "custom_components.eversource_rates.config_flow.EversourceClient.async_get_rates",
         AsyncMock(side_effect=exception),
     ):
-        result = await hass.config_entries.flow.async_init(
-            DOMAIN,
-            context={"source": "user"},
-            data={CONF_TERRITORY: "nh", CONF_RATE_CLASS: "r"},
+        result = await hass.config_entries.flow.async_configure(
+            result["flow_id"], {CONF_RATE_CLASS: "r"}
         )
     assert result["type"] == "form"
     assert result["errors"] == {"base": error}
@@ -136,14 +140,18 @@ async def test_config_flow_displays_client_errors(
 
 async def test_config_flow_creates_unique_entry(hass: HomeAssistant, rates) -> None:
     """Validate tariff access before creating a uniquely identified entry."""
+    result = await hass.config_entries.flow.async_init(
+        DOMAIN, context={"source": "user"}
+    )
+    result = await hass.config_entries.flow.async_configure(
+        result["flow_id"], {CONF_TERRITORY: "nh"}
+    )
     with patch(
         "custom_components.eversource_rates.config_flow.EversourceClient.async_get_rates",
         AsyncMock(return_value=rates),
     ):
-        result = await hass.config_entries.flow.async_init(
-            DOMAIN,
-            context={"source": "user"},
-            data={CONF_TERRITORY: "nh", CONF_RATE_CLASS: "r"},
+        result = await hass.config_entries.flow.async_configure(
+            result["flow_id"], {CONF_RATE_CLASS: "r"}
         )
     assert result["type"] == "create_entry"
     assert result["result"].unique_id == "eversource_rates_nh_r"
