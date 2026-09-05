@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.2](https://github.com/andrewtryder/ha-eversource/compare/v0.1.1...v0.1.2) (2026-09-05)
+
+
+### Bug Fixes
+
+* align rate sensor metadata with ha conventions ([#9](https://github.com/andrewtryder/ha-eversource/issues/9)) ([be39d79](https://github.com/andrewtryder/ha-eversource/commit/be39d790fec9e8bf75aa98741469c053dfb1c18c))
+
 ## [0.1.1](https://github.com/andrewtryder/ha-eversource/compare/v0.1.0...v0.1.1) (2026-09-05)
 
 
