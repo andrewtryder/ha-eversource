@@ -67,16 +67,22 @@ def parse_cell(value: str, label: str) -> tuple[Decimal, str]:
     normalized = " ".join(
         value.translate(_MINUS_TRANSLATION).replace("¢", " cents ").split()
     )
-    number = _NUMBER.search(normalized.replace(",", ""))
+    lower = normalized.lower()
+    label_lower = label.lower()
+    # MA pages publish credits as "- $0.00077 per kWh" (sign separated from amount).
+    numeric_text = re.sub(r"([+-])\s*\$?\s*(?=\d)", r"\1", normalized)
+    number = _NUMBER.search(numeric_text.replace(",", "").replace("$", " "))
     if number is None:
         raise EversourceParseError(f"Missing numeric rate for {label}")
     amount = decimal(number.group(1), f"rate for {label}")
-    lower = normalized.lower()
-    label_lower = label.lower()
     if "cent" in lower and "kwh" in lower:
         return amount / Decimal("100"), "USD/kWh"
-    if "$" in normalized and ("month" in lower or "month" in label_lower):
+    if ("$" in normalized or "per month" in lower) and (
+        "month" in lower or "month" in label_lower
+    ):
         return amount, "USD/month"
-    if "$" in normalized and ("kwh" in lower or "kwh" in label_lower):
+    if ("$" in normalized or "per kwh" in lower) and (
+        "kwh" in lower or "kwh" in label_lower
+    ):
         return amount, "USD/kWh"
     raise EversourceParseError(f"Unsupported or malformed unit for {label}: {value!r}")

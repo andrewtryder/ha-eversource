@@ -14,6 +14,20 @@
         "data": {
           "rate_class": "Electric rate class"
         }
+      },
+      "supply_plan": {
+        "title": "Supply plan",
+        "description": "Select your Eversource Basic Service supply plan. Fixed changes twice per year; Monthly Variable changes monthly.",
+        "data": {
+          "supply_plan": "Supply plan"
+        }
+      },
+      "service_area": {
+        "title": "Service area",
+        "description": "Select your Eastern Massachusetts service area. Energy Efficiency charges differ between Greater Boston / Cambridge / South Shore and Cape Cod / Martha's Vineyard.",
+        "data": {
+          "service_area": "Service area"
+        }
       }
     },
     "error": {

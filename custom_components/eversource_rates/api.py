@@ -13,6 +13,7 @@ from .const import REQUEST_TIMEOUT_SECONDS
 from .models import EversourceRates
 from .parsers import EversourceParseError, parse_tariff
 from .sources import TARIFF_SOURCES, TariffSource, get_tariff_source
+from .tariffs import TariffSelection
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -37,24 +38,44 @@ class EversourceTariffParseError(EversourceError):
 
 
 class EversourceClient:
-    """Retrieve public tariff pages for one logical territory and rate class."""
+    """Retrieve public tariff pages for one logical tariff selection."""
 
     def __init__(
         self,
         session: aiohttp.ClientSession,
         *,
-        territory: str,
-        rate_class: str,
+        selection: TariffSelection | None = None,
+        territory: str | None = None,
+        rate_class: str | None = None,
+        supply_plan: str | None = None,
+        service_area: str | None = None,
     ) -> None:
         """Initialize the client with Home Assistant's shared session.
 
-        ``territory`` and ``rate_class`` identify the logical tariff. Fetch URLs
-        and any optional Sitefinity ``.SEGMENT`` cookie come from ``TariffSource``.
+        Prefer ``selection=``. Keyword ``territory`` / ``rate_class`` /
+        ``supply_plan`` / ``service_area`` remain for call-site convenience.
         """
+        if selection is None:
+            if territory is None or rate_class is None:
+                raise TypeError(
+                    "EversourceClient requires selection= or territory= and rate_class="
+                )
+            selection = TariffSelection(
+                territory=territory,
+                rate_class=rate_class,
+                supply_plan=supply_plan,
+                service_area=service_area,
+            )
         self._session = session
-        self._territory = territory
-        self._rate_class = rate_class
-        self._source: TariffSource | None = get_tariff_source(territory, rate_class)
+        self._selection = selection
+        self._source: TariffSource | None = get_tariff_source(
+            selection.territory, selection.rate_class
+        )
+
+    @property
+    def selection(self) -> TariffSelection:
+        """Return the logical tariff selection for this client."""
+        return self._selection
 
     async def _async_fetch(self, url: str) -> str:
         headers: dict[str, str] = {}
@@ -84,27 +105,29 @@ class EversourceClient:
         if self._source is None:
             raise EversourceUnsupportedTariffError("Unsupported Eversource tariff")
         source = self._source
+        selection = self._selection
         supply_html, delivery_html = await asyncio.gather(
             self._async_fetch(source.supply_url),
             self._async_fetch(source.delivery_url),
         )
         try:
             supply, delivery = parse_tariff(
-                self._territory,
-                self._rate_class,
+                selection,
                 supply_html,
                 delivery_html,
             )
         except EversourceParseError as err:
             raise EversourceTariffParseError(str(err)) from err
         rates = EversourceRates(
-            territory=self._territory,
-            rate_class=self._rate_class,
+            territory=selection.territory,
+            rate_class=selection.rate_class,
             supply=supply,
             delivery=delivery,
             source_supply_url=source.supply_url,
             source_delivery_url=source.delivery_url,
             retrieved_at=datetime.now(UTC),
+            supply_plan=selection.supply_plan,
+            service_area=selection.service_area,
         )
         if not Decimal("0") < rates.total_variable_rate < Decimal("2"):
             raise EversourceTariffParseError(
@@ -112,8 +135,8 @@ class EversourceClient:
             )
         _LOGGER.debug(
             "Parsed Eversource %s %s tariff with %d delivery components",
-            self._territory,
-            self._rate_class,
+            selection.territory,
+            selection.rate_class,
             len(delivery.variable_components),
         )
         return rates

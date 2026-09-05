@@ -15,12 +15,7 @@ else:
     from dataclasses import dataclass
 
     from .api import EversourceClient
-    from .const import (
-        CONF_RATE_CLASS,
-        CONF_TERRITORY,
-        TERRITORIES,
-        update_interval_timedelta_from_options,
-    )
+    from .const import update_interval_timedelta_from_options
     from .coordinator import EversourceRatesCoordinator
 
     @dataclass(slots=True)
@@ -38,11 +33,11 @@ else:
         from homeassistant.const import Platform
         from homeassistant.helpers.aiohttp_client import async_get_clientsession
 
-        territory = TERRITORIES[entry.data[CONF_TERRITORY]]
+        from .tariffs import selection_from_entry_data
+
         client = EversourceClient(
             async_get_clientsession(hass),
-            territory=territory.key,
-            rate_class=entry.data[CONF_RATE_CLASS],
+            selection=selection_from_entry_data(dict(entry.data)),
         )
         coordinator = EversourceRatesCoordinator(
             hass,

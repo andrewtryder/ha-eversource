@@ -19,6 +19,7 @@ from . import EversourceConfigEntry
 from .const import DOMAIN, RATE_CLASS_NAMES, TERRITORIES
 from .coordinator import EversourceRatesCoordinator
 from .entity_ids import sensor_object_id
+from .tariffs import SERVICE_AREA_NAMES, SUPPLY_PLAN_NAMES
 
 if TYPE_CHECKING:
     from homeassistant.core import HomeAssistant
@@ -69,12 +70,16 @@ class EversourceSensor(CoordinatorEntity[EversourceRatesCoordinator], SensorEnti
         super().__init__(coordinator)
         self.entity_description = description
         self._attr_unique_id = "_".join(
-            (
+            part
+            for part in (
                 DOMAIN,
                 coordinator.data.territory,
                 coordinator.data.rate_class,
+                coordinator.data.supply_plan,
+                coordinator.data.service_area,
                 description.key,
             )
+            if part
         )
         # Assign the documented ID before Home Assistant registers the entity.
         # NH Rate R keeps historical short IDs; other tariffs include territory/rate.
@@ -82,6 +87,8 @@ class EversourceSensor(CoordinatorEntity[EversourceRatesCoordinator], SensorEnti
             coordinator.data.territory,
             coordinator.data.rate_class,
             description.key,
+            supply_plan=coordinator.data.supply_plan,
+            service_area=coordinator.data.service_area,
         )
         self.entity_id = f"sensor.{object_id}"
 
@@ -89,13 +96,23 @@ class EversourceSensor(CoordinatorEntity[EversourceRatesCoordinator], SensorEnti
     def device_info(self) -> DeviceInfo:
         """Return the logical Eversource tariff device."""
         rates = self.coordinator.data
-        name = (
-            f"Eversource {TERRITORIES[rates.territory].name} "
-            f"{RATE_CLASS_NAMES[rates.rate_class]}"
-        )
+        name_parts = [
+            f"Eversource {TERRITORIES[rates.territory].name}",
+            RATE_CLASS_NAMES[rates.rate_class],
+        ]
+
+        if rates.supply_plan:
+            name_parts.append(SUPPLY_PLAN_NAMES[rates.supply_plan])
+        if rates.service_area:
+            name_parts.append(SERVICE_AREA_NAMES[rates.service_area])
+        device_id_parts = [rates.territory, rates.rate_class]
+        if rates.supply_plan:
+            device_id_parts.append(rates.supply_plan)
+        if rates.service_area:
+            device_id_parts.append(rates.service_area)
         return DeviceInfo(
-            identifiers={(DOMAIN, f"{rates.territory}_{rates.rate_class}")},
-            name=name,
+            identifiers={(DOMAIN, "_".join(device_id_parts))},
+            name=" — ".join(name_parts),
             manufacturer="Eversource",
             model=RATE_CLASS_NAMES[rates.rate_class],
             configuration_url=rates.source_supply_url,
@@ -122,6 +139,8 @@ class EversourceSensor(CoordinatorEntity[EversourceRatesCoordinator], SensorEnti
         return {
             "territory": rates.territory,
             "rate_class": rates.rate_class.upper(),
+            "supply_plan": rates.supply_plan,
+            "service_area": rates.service_area,
             "supply_rate": str(rates.supply.rate),
             "delivery_rate": str(rates.delivery.variable_rate),
             "supply_effective_date": rates.supply.effective_date.isoformat()

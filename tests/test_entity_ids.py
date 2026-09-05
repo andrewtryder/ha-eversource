@@ -54,11 +54,24 @@ def test_ct_rate_1_primary_sensor_object_ids_are_prefixed() -> None:
 
 def test_synthetic_ema_and_wma_r1_do_not_collide() -> None:
     """Distinct MA territories with the same rate class must not collide."""
-    ema = sensor_object_id("ema", "r1", "total_electricity_rate")
-    wma = sensor_object_id("wma", "r1", "total_electricity_rate")
-    assert ema == "eversource_ema_r1_total_electricity_rate"
-    assert wma == "eversource_wma_r1_total_electricity_rate"
+    ema = sensor_object_id(
+        "ema", "r1", "total_electricity_rate", supply_plan="fixed", service_area="main"
+    )
+    wma = sensor_object_id("wma", "r1", "total_electricity_rate", supply_plan="fixed")
+    assert ema == "eversource_ema_r1_fixed_main_total_electricity_rate"
+    assert wma == "eversource_wma_r1_fixed_total_electricity_rate"
     assert ema != wma
+
+
+def test_wma_supply_plans_do_not_collide() -> None:
+    """Fixed and Monthly Variable WMA entries must not share object IDs."""
+    fixed = sensor_object_id("wma", "r1", "total_electricity_rate", supply_plan="fixed")
+    monthly = sensor_object_id(
+        "wma", "r1", "total_electricity_rate", supply_plan="monthly_variable"
+    )
+    assert fixed == "eversource_wma_r1_fixed_total_electricity_rate"
+    assert monthly == "eversource_wma_r1_monthly_variable_total_electricity_rate"
+    assert fixed != monthly
 
 
 @pytest.mark.parametrize(
@@ -78,7 +91,10 @@ def test_slug_normalization_is_deterministic(raw: str, expected: str) -> None:
     )
 
 
-def test_nh_unique_id_scheme_unchanged() -> None:
+def test_slugify_rejects_empty() -> None:
+    with pytest.raises(ValueError, match="Cannot derive"):
+        slugify_object_id_part("   ***  ")
+
     """Entity unique IDs remain domain_territory_rate_class_key."""
     territory = "nh"
     rate_class = "r"

@@ -14,6 +14,7 @@ from custom_components.eversource_rates.const import (
     CONF_TERRITORY,
     DOMAIN,
     RATE_CLASS_NAMES,
+    TERRITORIES,
     Territory,
 )
 
@@ -105,6 +106,122 @@ async def test_config_flow_connecticut_rate_1(hass: HomeAssistant, rates) -> Non
     assert result["result"].unique_id == "eversource_rates_ct_1"
     assert "Connecticut" in result["title"]
     assert "Rate 1" in result["title"]
+
+
+async def test_config_flow_wma_requires_supply_plan(hass: HomeAssistant, rates) -> None:
+    """Western Massachusetts R1 asks for Fixed vs Monthly Variable Basic Service."""
+    from custom_components.eversource_rates.const import CONF_SUPPLY_PLAN
+
+    result = await hass.config_entries.flow.async_init(
+        DOMAIN, context={"source": "user"}
+    )
+    result = await hass.config_entries.flow.async_configure(
+        result["flow_id"], {CONF_TERRITORY: "wma"}
+    )
+    assert result["step_id"] == "rate_class"
+    result = await hass.config_entries.flow.async_configure(
+        result["flow_id"], {CONF_RATE_CLASS: "r1"}
+    )
+    assert result["type"] == FlowResultType.FORM
+    assert result["step_id"] == "supply_plan"
+
+    with patch(
+        "custom_components.eversource_rates.config_flow.EversourceClient.async_get_rates",
+        AsyncMock(return_value=rates),
+    ):
+        result = await hass.config_entries.flow.async_configure(
+            result["flow_id"], {CONF_SUPPLY_PLAN: "fixed"}
+        )
+    assert result["type"] == FlowResultType.CREATE_ENTRY
+    assert result["data"] == {
+        CONF_TERRITORY: "wma",
+        CONF_RATE_CLASS: "r1",
+        CONF_SUPPLY_PLAN: "fixed",
+    }
+    assert result["result"].unique_id == "eversource_rates_wma_r1_fixed"
+    assert "Western Massachusetts" in result["title"]
+    assert "Fixed" in result["title"]
+
+
+async def test_config_flow_supply_plan_maps_client_errors(
+    hass: HomeAssistant, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Supply-plan finalize maps connection failures to translated errors."""
+    from custom_components.eversource_rates.api import EversourceConnectionError
+    from custom_components.eversource_rates.const import CONF_SUPPLY_PLAN
+
+    result = await hass.config_entries.flow.async_init(
+        DOMAIN, context={"source": "user"}
+    )
+    result = await hass.config_entries.flow.async_configure(
+        result["flow_id"], {CONF_TERRITORY: "wma"}
+    )
+    result = await hass.config_entries.flow.async_configure(
+        result["flow_id"], {CONF_RATE_CLASS: "r1"}
+    )
+    with patch(
+        "custom_components.eversource_rates.config_flow.EversourceClient.async_get_rates",
+        AsyncMock(side_effect=EversourceConnectionError("down")),
+    ):
+        result = await hass.config_entries.flow.async_configure(
+            result["flow_id"], {CONF_SUPPLY_PLAN: "monthly_variable"}
+        )
+    assert result["type"] == FlowResultType.FORM
+    assert result["errors"] == {"base": "cannot_connect"}
+
+
+async def test_config_flow_service_area_maps_client_errors(
+    hass: HomeAssistant, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Service-area finalize maps parse failures to translated errors."""
+    from custom_components.eversource_rates.api import EversourceTariffParseError
+    from custom_components.eversource_rates.const import (
+        CONF_SERVICE_AREA,
+        CONF_SUPPLY_PLAN,
+    )
+    from custom_components.eversource_rates.tariffs import (
+        TARIFF_DEFINITIONS,
+        TariffDefinition,
+    )
+
+    monkeypatch.setitem(
+        TERRITORIES,
+        "ema",
+        Territory("ema", "Eastern Massachusetts", "ema", ("r1",)),
+    )
+    monkeypatch.setitem(
+        TARIFF_DEFINITIONS,
+        ("ema", "r1"),
+        TariffDefinition(
+            "ema",
+            "r1",
+            "R1 - Residential Non-Heating",
+            supply_plans=("fixed",),
+            service_areas=("main", "cape"),
+        ),
+    )
+    result = await hass.config_entries.flow.async_init(
+        DOMAIN, context={"source": "user"}
+    )
+    result = await hass.config_entries.flow.async_configure(
+        result["flow_id"], {CONF_TERRITORY: "ema"}
+    )
+    result = await hass.config_entries.flow.async_configure(
+        result["flow_id"], {CONF_RATE_CLASS: "r1"}
+    )
+    result = await hass.config_entries.flow.async_configure(
+        result["flow_id"], {CONF_SUPPLY_PLAN: "fixed"}
+    )
+    assert result["step_id"] == "service_area"
+    with patch(
+        "custom_components.eversource_rates.config_flow.EversourceClient.async_get_rates",
+        AsyncMock(side_effect=EversourceTariffParseError("bad")),
+    ):
+        result = await hass.config_entries.flow.async_configure(
+            result["flow_id"], {CONF_SERVICE_AREA: "main"}
+        )
+    assert result["type"] == FlowResultType.FORM
+    assert result["errors"] == {"base": "invalid_tariff_data"}
 
 
 async def test_config_flow_rejects_unsupported_rate_for_territory(

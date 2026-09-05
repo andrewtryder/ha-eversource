@@ -22,6 +22,8 @@ from custom_components.eversource_rates.const import (
     CONF_TERRITORY,
     DEFAULT_UPDATE_INTERVAL_HOURS,
     DOMAIN,
+    TERRITORIES,
+    Territory,
 )
 from custom_components.eversource_rates.coordinator import EversourceRatesCoordinator
 
@@ -79,6 +81,107 @@ async def test_setup_creates_primary_and_diagnostic_sensors(
     ):
         _assert_rate_sensor_metadata(hass, entity_id)
 
+
+async def test_setup_wma_uses_supply_plan_prefixed_entity_ids(
+    hass: HomeAssistant, rates
+) -> None:
+    """WMA Fixed entries include supply_plan in object and unique IDs."""
+    from dataclasses import replace
+
+    from custom_components.eversource_rates.const import CONF_SUPPLY_PLAN
+
+    wma_rates = replace(rates, territory="wma", rate_class="r1", supply_plan="fixed")
+    entry = MockConfigEntry(
+        domain=DOMAIN,
+        data={
+            CONF_TERRITORY: "wma",
+            CONF_RATE_CLASS: "r1",
+            CONF_SUPPLY_PLAN: "fixed",
+        },
+        unique_id="eversource_rates_wma_r1_fixed",
+    )
+    entry.add_to_hass(hass)
+    with patch(
+        "custom_components.eversource_rates.EversourceClient.async_get_rates",
+        AsyncMock(return_value=wma_rates),
+    ):
+        assert await hass.config_entries.async_setup(entry.entry_id)
+        await hass.async_block_till_done()
+    total = hass.states.get("sensor.eversource_wma_r1_fixed_total_electricity_rate")
+    assert total is not None
+    assert total.attributes["supply_plan"] == "fixed"
+    registry = er.async_get(hass)
+    assert (
+        registry.async_get(
+            "sensor.eversource_wma_r1_fixed_total_electricity_rate"
+        ).unique_id
+        == "eversource_rates_wma_r1_fixed_total_electricity_rate"
+    )
+
+
+async def test_setup_ema_includes_service_area_in_device_and_entity_ids(
+    hass: HomeAssistant, rates, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Service-area selections appear in entity object IDs and device names."""
+    from dataclasses import replace
+
+    from custom_components.eversource_rates.const import (
+        CONF_SERVICE_AREA,
+        CONF_SUPPLY_PLAN,
+    )
+
+    monkeypatch.setitem(
+        TERRITORIES,
+        "ema",
+        Territory("ema", "Eastern Massachusetts", "ema", ("r1",)),
+    )
+    ema_rates = replace(
+        rates,
+        territory="ema",
+        rate_class="r1",
+        supply_plan="fixed",
+        service_area="cape",
+    )
+    entry = MockConfigEntry(
+        domain=DOMAIN,
+        data={
+            CONF_TERRITORY: "ema",
+            CONF_RATE_CLASS: "r1",
+            CONF_SUPPLY_PLAN: "fixed",
+            CONF_SERVICE_AREA: "cape",
+        },
+        unique_id="eversource_rates_ema_r1_fixed_cape",
+    )
+    entry.add_to_hass(hass)
+    with patch(
+        "custom_components.eversource_rates.EversourceClient.async_get_rates",
+        AsyncMock(return_value=ema_rates),
+    ):
+        assert await hass.config_entries.async_setup(entry.entry_id)
+        await hass.async_block_till_done()
+    entity_id = "sensor.eversource_ema_r1_fixed_cape_total_electricity_rate"
+    total = hass.states.get(entity_id)
+    assert total is not None
+    assert total.attributes["service_area"] == "cape"
+
+
+async def test_setup_can_enable_diagnostic_component_sensor(
+    hass: HomeAssistant, rates
+) -> None:
+    """Disabled delivery-component sensors can be enabled after setup."""
+    entry = MockConfigEntry(
+        domain=DOMAIN,
+        data={CONF_TERRITORY: "nh", CONF_RATE_CLASS: "r"},
+        unique_id="eversource_rates_nh_r",
+    )
+    entry.add_to_hass(hass)
+    with patch(
+        "custom_components.eversource_rates.EversourceClient.async_get_rates",
+        AsyncMock(return_value=rates),
+    ):
+        assert await hass.config_entries.async_setup(entry.entry_id)
+        await hass.async_block_till_done()
+    registry = er.async_get(hass)
     registry.async_update_entity(
         "sensor.eversource_distribution_charge", disabled_by=None
     )
@@ -94,10 +197,10 @@ async def test_setup_creates_primary_and_diagnostic_sensors(
     _assert_rate_sensor_metadata(hass, "sensor.eversource_distribution_charge")
 
 
-async def test_setup_constructs_client_with_territory_and_rate_class(
+async def test_setup_constructs_client_with_selection(
     hass: HomeAssistant, rates
 ) -> None:
-    """Client identity is logical territory/rate class; TariffSource owns cookies."""
+    """Client identity is a TariffSelection; TariffSource owns cookies/URLs."""
     entry = MockConfigEntry(
         domain=DOMAIN,
         data={CONF_TERRITORY: "nh", CONF_RATE_CLASS: "r"},
@@ -108,10 +211,10 @@ async def test_setup_constructs_client_with_territory_and_rate_class(
         client.return_value.async_get_rates = AsyncMock(return_value=rates)
         assert await hass.config_entries.async_setup(entry.entry_id)
         await hass.async_block_till_done()
-    assert client.call_args.kwargs == {
-        "territory": "nh",
-        "rate_class": "r",
-    }
+    selection = client.call_args.kwargs["selection"]
+    assert selection.territory == "nh"
+    assert selection.rate_class == "r"
+    assert selection.supply_plan is None
 
 
 @pytest.mark.parametrize(
