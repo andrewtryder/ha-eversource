@@ -1,5 +1,14 @@
 # Changelog
 
+## [0.3.0](https://github.com/andrewtryder/ha-eversource/compare/v0.2.0...v0.3.0) (2026-09-05)
+
+
+### Features
+
+* add Connecticut Rate 1 tariffs ([#33](https://github.com/andrewtryder/ha-eversource/issues/33)) ([825ba6a](https://github.com/andrewtryder/ha-eversource/commit/825ba6a0d6eb2607d0f03fcd53e7aeded884a9dd))
+* add Eastern Massachusetts R1 tariffs ([#36](https://github.com/andrewtryder/ha-eversource/issues/36)) ([7f795eb](https://github.com/andrewtryder/ha-eversource/commit/7f795eb09b89a369dc277547756734e2b19b2b23))
+* add Western Massachusetts R1 tariffs ([#35](https://github.com/andrewtryder/ha-eversource/issues/35)) ([77cf779](https://github.com/andrewtryder/ha-eversource/commit/77cf7791bfb0af4d1dd504d44cb61a1ce4dd2888))
+
 ## [0.2.0](https://github.com/andrewtryder/ha-eversource/compare/v0.1.4...v0.2.0) (2026-09-05)
 
 
