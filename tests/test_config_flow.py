@@ -109,6 +109,35 @@ async def test_config_flow_rejects_unsupported_rate_for_territory(
         )
 
 
+async def test_config_flow_defensive_unsupported_inputs(
+    hass: HomeAssistant, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Direct step calls still reject unsupported territory/rate values."""
+    from custom_components.eversource_rates.config_flow import (
+        EversourceRatesConfigFlow,
+    )
+
+    monkeypatch.setattr(
+        "custom_components.eversource_rates.config_flow.TERRITORIES",
+        _synthetic_territories(),
+    )
+    monkeypatch.setattr(
+        "custom_components.eversource_rates.config_flow.RATE_CLASS_NAMES",
+        _synthetic_rate_names(),
+    )
+    flow = EversourceRatesConfigFlow()
+    flow.hass = hass
+
+    bad_territory = await flow.async_step_user({CONF_TERRITORY: "missing"})
+    assert bad_territory["type"] == FlowResultType.FORM
+    assert bad_territory["errors"] == {"base": "unsupported_tariff"}
+
+    flow._territory = "beta"
+    bad_rate = await flow.async_step_rate_class({CONF_RATE_CLASS: "r1"})
+    assert bad_rate["type"] == FlowResultType.FORM
+    assert bad_rate["errors"] == {"base": "unsupported_tariff"}
+
+
 async def test_config_flow_duplicate_entry_still_aborts(
     hass: HomeAssistant, rates
 ) -> None:
