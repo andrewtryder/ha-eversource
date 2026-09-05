@@ -9,6 +9,7 @@ from custom_components.eversource_rates.api import (
     EversourceClient,
     EversourceConnectionError,
     EversourceTariffParseError,
+    EversourceUnsupportedTariffError,
 )
 
 FIXTURES = Path(__file__).parent / "fixtures"
@@ -72,6 +73,12 @@ def test_http_errors_fail_safely(status: int) -> None:
 def test_timeout_fails_safely() -> None:
     with pytest.raises(EversourceConnectionError, match="Timed out"):
         asyncio.run(EversourceClient(TimeoutSession(), "nh", "r").async_get_rates())
+
+
+def test_unsupported_tariff_fails_before_network_access() -> None:
+    """Reject a non-production tariff without attempting an HTTP request."""
+    with pytest.raises(EversourceUnsupportedTariffError):
+        asyncio.run(EversourceClient(FakeSession([]), "ct", "r").async_get_rates())
 
 
 def test_malformed_supply_fails_safely() -> None:
