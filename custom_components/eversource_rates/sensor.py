@@ -71,7 +71,11 @@ class EversourceSensor(CoordinatorEntity[EversourceRatesCoordinator], SensorEnti
                 description.key,
             )
         )
-        self._attr_suggested_object_id = f"eversource_{description.key}"
+
+    @property
+    def suggested_object_id(self) -> str:
+        """Keep stable entity IDs independent of the tariff device name."""
+        return f"eversource_{self.entity_description.key}"
 
     @property
     def device_info(self) -> DeviceInfo:
