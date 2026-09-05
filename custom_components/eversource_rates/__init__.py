@@ -12,7 +12,12 @@ else:
     from dataclasses import dataclass
 
     from .api import EversourceClient
-    from .const import CONF_RATE_CLASS, CONF_TERRITORY, TERRITORIES
+    from .const import (
+        CONF_RATE_CLASS,
+        CONF_TERRITORY,
+        TERRITORIES,
+        update_interval_timedelta_from_options,
+    )
     from .coordinator import EversourceRatesCoordinator
 
     @dataclass(slots=True)
@@ -37,7 +42,11 @@ else:
             segment=territory.segment,
             rate_class=entry.data[CONF_RATE_CLASS],
         )
-        coordinator = EversourceRatesCoordinator(hass, client)
+        coordinator = EversourceRatesCoordinator(
+            hass,
+            client,
+            update_interval=update_interval_timedelta_from_options(dict(entry.options)),
+        )
         await coordinator.async_config_entry_first_refresh()
         entry.runtime_data = EversourceRuntimeData(coordinator)
         await hass.config_entries.async_forward_entry_setups(entry, (Platform.SENSOR,))

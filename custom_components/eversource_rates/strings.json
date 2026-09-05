@@ -24,5 +24,16 @@
     "abort": {
       "already_configured": "This Eversource tariff is already configured."
     }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Eversource Rates options",
+        "description": "Choose how often public Eversource tariff pages are checked.",
+        "data": {
+          "update_interval_hours": "Tariff update interval"
+        }
+      }
+    }
   }
 }
