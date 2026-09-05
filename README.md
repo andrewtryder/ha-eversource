@@ -30,9 +30,11 @@ Go to **Settings → Devices & services → Add integration**, select **Eversour
 - `sensor.eversource_total_electricity_rate` — supply plus variable delivery riders, USD/kWh.
 - `sensor.eversource_customer_charge` — fixed monthly charge, USD/month.
 
-Delivery components are diagnostic entities disabled by default. To use tariff pricing, go to **Settings → Dashboards → Energy**, edit **Grid consumption**, choose **Use an entity with current price**, and select **Eversource Total Electricity Rate**.
+Delivery components are diagnostic entities disabled by default. To use tariff pricing, go to **Settings → Dashboards → Energy**, edit **Grid consumption**, choose **Use an entity with current price**, and select **Eversource Total Electricity Rate**. Newly published delivery riders are included in the total immediately; their individual diagnostic entity appears after the integration is reloaded.
 
 The total electricity-rate sensor intentionally excludes the fixed customer charge. It is the proper current-price input: supply plus all per-kWh delivery components. The monthly customer charge remains separate and is never smeared across electricity use. Energy Dashboard price changes apply to future calculations; this integration does not retroactively correct past costs.
+
+This release intentionally supports only New Hampshire Residential Rate R. Other territories and rate classes will use dedicated parser strategies when they are added.
 
 ## Privacy, data source, and disclaimer
 

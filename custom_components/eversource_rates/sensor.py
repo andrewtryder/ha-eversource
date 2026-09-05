@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from decimal import Decimal
+from typing import TYPE_CHECKING
 
 from homeassistant.components.sensor import (
     SensorDeviceClass,
@@ -17,6 +18,9 @@ from homeassistant.helpers.update_coordinator import CoordinatorEntity
 from . import EversourceConfigEntry
 from .const import DOMAIN, RATE_CLASS_NAMES, TERRITORIES
 from .coordinator import EversourceRatesCoordinator
+
+if TYPE_CHECKING:
+    from homeassistant.core import HomeAssistant
 
 USD_PER_KWH = "USD/kWh"
 USD_PER_MONTH = "USD/month"
@@ -104,7 +108,7 @@ class EversourceSensor(CoordinatorEntity[EversourceRatesCoordinator], SensorEnti
         return values[self.entity_description.key]
 
     @property
-    def extra_state_attributes(self) -> dict[str, str]:
+    def extra_state_attributes(self) -> dict[str, str | None]:
         """Return concise public tariff provenance for the total-rate sensor."""
         rates = self.coordinator.data
         if self.entity_description.key != "total_electricity_rate":
@@ -155,7 +159,9 @@ class EversourceComponentSensor(EversourceSensor):
 
 
 async def async_setup_entry(
-    hass, entry: EversourceConfigEntry, async_add_entities: AddEntitiesCallback
+    hass: HomeAssistant,
+    entry: EversourceConfigEntry,
+    async_add_entities: AddEntitiesCallback,
 ) -> None:
     """Set up all stable known sensors and current parsed component sensors."""
     coordinator = entry.runtime_data.coordinator

@@ -18,6 +18,7 @@ from custom_components.eversource_rates.const import (
     CONF_RATE_CLASS,
     CONF_TERRITORY,
     DOMAIN,
+    Territory,
 )
 from custom_components.eversource_rates.coordinator import EversourceRatesCoordinator
 
@@ -45,6 +46,27 @@ async def test_setup_creates_primary_and_diagnostic_sensors(
     assert total.attributes["supply_effective_date"] == "2026-08-01"
     assert hass.states.get("sensor.eversource_customer_charge").state == "19.81"
     assert hass.states.get("sensor.eversource_distribution_charge") is None
+
+
+async def test_setup_uses_territory_sitefinity_segment(
+    hass: HomeAssistant, rates, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Use the territory's Sitefinity segment rather than its config key."""
+    entry = MockConfigEntry(
+        domain=DOMAIN,
+        data={CONF_TERRITORY: "nh", CONF_RATE_CLASS: "r"},
+        unique_id="eversource_rates_nh_r",
+    )
+    entry.add_to_hass(hass)
+    monkeypatch.setattr(
+        "custom_components.eversource_rates.TERRITORIES",
+        {"nh": Territory("nh", "New Hampshire", "sitefinity-nh", ("r",))},
+    )
+    with patch("custom_components.eversource_rates.EversourceClient") as client:
+        client.return_value.async_get_rates = AsyncMock(return_value=rates)
+        assert await hass.config_entries.async_setup(entry.entry_id)
+        await hass.async_block_till_done()
+    assert client.call_args.args[1:] == ("sitefinity-nh", "r")
 
 
 @pytest.mark.parametrize(
