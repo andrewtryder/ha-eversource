@@ -1,0 +1,23 @@
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+asyncio_mode = "auto"
+addopts = "--cov=custom_components/eversource_rates --cov-report=term-missing --cov-report=xml --cov-fail-under=96"
+pythonpath = ["."]
+
+[tool.ruff]
+target-version = "py314"
+line-length = 88
+
+[tool.ruff.lint]
+select = ["E", "W", "F", "I", "C", "B", "D"]
+ignore = []
+
+[tool.ruff.lint.per-file-ignores]
+"tests/*.py" = ["D"]
+"tools/*.py" = ["D"]
+
+[tool.ruff.lint.isort]
+combine-as-imports = true
+
+[tool.ruff.lint.pydocstyle]
+convention = "google"

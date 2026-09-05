@@ -1,0 +1,7 @@
+{
+  "config": {
+    "step": {"user": {"title": "Eversource Rates", "description": "Select a verified Eversource residential tariff.", "data": {"territory": "Service territory", "rate_class": "Rate class"}}},
+    "error": {"cannot_connect": "Unable to connect to Eversource.", "invalid_tariff_data": "Eversource returned tariff data that could not be validated.", "unsupported_tariff": "This tariff is not supported."},
+    "abort": {"already_configured": "This Eversource tariff is already configured."}
+  }
+}
