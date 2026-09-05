@@ -71,6 +71,9 @@ class EversourceSensor(CoordinatorEntity[EversourceRatesCoordinator], SensorEnti
                 description.key,
             )
         )
+        # Assign the documented ID before Home Assistant registers the entity.
+        # This keeps automations independent of the territory/rate-class device name.
+        self.entity_id = f"sensor.eversource_{description.key}"
 
     @property
     def device_info(self) -> DeviceInfo:
