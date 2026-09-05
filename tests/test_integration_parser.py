@@ -68,3 +68,13 @@ def test_supply_rejects_implausible_rate() -> None:
     html = "<h2>Current Supply Rates</h2><p>Rate R will be $19.81 per kWh</p>"
     with pytest.raises(EversourceParseError, match="plausible"):
         parse_supply_html(html)
+
+
+def test_supply_rejects_malformed_effective_date() -> None:
+    """Reject a recognized supply sentence with an impossible effective date."""
+    html = (
+        "<h2>Current Supply Rates</h2><p>Rate R will be $0.14009 per kWh "
+        "February 31, 2026 through January 31, 2027.</p>"
+    )
+    with pytest.raises(EversourceParseError, match="Malformed supply date"):
+        parse_supply_html(html)

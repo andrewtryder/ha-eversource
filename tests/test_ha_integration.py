@@ -19,6 +19,7 @@ from custom_components.eversource_rates.const import (
     CONF_TERRITORY,
     DOMAIN,
 )
+from custom_components.eversource_rates.coordinator import EversourceRatesCoordinator
 
 
 async def test_setup_creates_primary_and_diagnostic_sensors(
@@ -84,3 +85,15 @@ async def test_config_flow_creates_unique_entry(hass: HomeAssistant, rates) -> N
         )
     assert result["type"] == "create_entry"
     assert result["result"].unique_id == "eversource_rates_nh_r"
+
+
+async def test_coordinator_converts_client_error_to_update_failed(
+    hass: HomeAssistant,
+) -> None:
+    """Preserve normal coordinator failure semantics for a remote outage."""
+    client = AsyncMock()
+    client.async_get_rates.side_effect = EversourceConnectionError("offline")
+    coordinator = EversourceRatesCoordinator(hass, client)
+    with pytest.raises(Exception, match="offline"):
+        await coordinator.async_refresh()
+    assert coordinator.last_update_success is False
