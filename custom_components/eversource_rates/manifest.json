@@ -1,12 +1,12 @@
 {
   "domain": "eversource_rates",
   "name": "Eversource Rates",
-  "version": "0.1.0",
-  "documentation": "https://github.com/andrewtryder/ha-eversource",
-  "issue_tracker": "https://github.com/andrewtryder/ha-eversource/issues",
-  "codeowners": ["@andrewtryder"],
   "config_flow": true,
+  "codeowners": ["@andrewtryder"],
+  "documentation": "https://github.com/andrewtryder/ha-eversource",
   "integration_type": "service",
   "iot_class": "cloud_polling",
-  "requirements": ["beautifulsoup4==4.15.0"]
+  "issue_tracker": "https://github.com/andrewtryder/ha-eversource/issues",
+  "requirements": ["beautifulsoup4==4.15.0"],
+  "version": "0.1.0"
 }
