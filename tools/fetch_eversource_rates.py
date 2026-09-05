@@ -47,7 +47,10 @@ class TariffRates:
 
 
 def _display_date(value) -> str | None:
-    return value.strftime("%B %-d, %Y") if value else None
+    """Format a date portably as ``September 5, 2026`` (no platform-specific flags)."""
+    if not value:
+        return None
+    return f"{value.strftime('%B')} {value.day}, {value.year}"
 
 
 def parse_supply_html(html: str) -> tuple[Decimal, str | None, str | None]:

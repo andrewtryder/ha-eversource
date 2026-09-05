@@ -5,9 +5,12 @@ from __future__ import annotations
 try:
     from homeassistant.config_entries import ConfigEntry
     from homeassistant.core import HomeAssistant
-except ModuleNotFoundError:  # pragma: no cover - developer tooling without HA
+except ModuleNotFoundError as err:  # pragma: no cover - developer tooling without HA
     # Allow importing parser/api modules from tools/ without Home Assistant installed.
-    pass
+    # Only suppress the missing Home Assistant package itself — re-raise anything else.
+    missing = err.name or ""
+    if missing != "homeassistant" and not missing.startswith("homeassistant."):
+        raise
 else:
     from dataclasses import dataclass
 

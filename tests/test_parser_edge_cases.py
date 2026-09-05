@@ -105,3 +105,25 @@ def test_delivery_rejects_clearly_truncated_table() -> None:
     )
     with pytest.raises(EversourceParseError):
         parse_delivery_html(html)
+
+
+def test_delivery_accepts_identical_duplicate_customer_charge() -> None:
+    """Identical Customer Charge rows remain acceptable."""
+    html = _delivery_fixture().replace(
+        "<tr><td>Customer Charge (per month)</td><td>$19.81<br>(per month)</td></tr>",
+        "<tr><td>Customer Charge (per month)</td><td>$19.81<br>(per month)</td></tr>"
+        "<tr><td>Customer Charge (per month)</td><td>$19.81<br>(per month)</td></tr>",
+    )
+    parsed = parse_delivery_html(html)
+    assert parsed.customer_charge == Decimal("19.81")
+
+
+def test_delivery_rejects_conflicting_duplicate_customer_charge() -> None:
+    """Conflicting Customer Charge amounts fail closed like variable duplicates."""
+    html = _delivery_fixture().replace(
+        "<tr><td>Customer Charge (per month)</td><td>$19.81<br>(per month)</td></tr>",
+        "<tr><td>Customer Charge (per month)</td><td>$19.81<br>(per month)</td></tr>"
+        "<tr><td>Customer Charge (per month)</td><td>$20.00<br>(per month)</td></tr>",
+    )
+    with pytest.raises(EversourceParseError, match="Conflicting values for Customer"):
+        parse_delivery_html(html)

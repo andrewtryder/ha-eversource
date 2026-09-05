@@ -70,6 +70,9 @@ class EversourceRatesConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         """Select a rate class supported by the chosen territory."""
         assert self._territory is not None
         options = _rate_class_options(self._territory)
+        if not options:
+            # Malformed territory definition with no named rate classes.
+            return self.async_abort(reason="unsupported_tariff")
         errors: dict[str, str] = {}
         if user_input is not None:
             rate_class = user_input[CONF_RATE_CLASS]

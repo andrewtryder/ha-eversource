@@ -172,3 +172,24 @@ async def test_config_flow_duplicate_entry_still_aborts(
         )
     assert second["type"] == FlowResultType.ABORT
     assert second["reason"] == "already_configured"
+
+
+async def test_config_flow_aborts_when_territory_has_no_rate_classes(
+    hass: HomeAssistant, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A territory with no recognized rate-class names aborts deliberately."""
+    monkeypatch.setattr(
+        "custom_components.eversource_rates.config_flow.TERRITORIES",
+        {
+            "nh": Territory("nh", "New Hampshire", "nh", ("r",)),
+            "empty": Territory("empty", "Empty Territory", "empty", ("unknown",)),
+        },
+    )
+    result = await hass.config_entries.flow.async_init(
+        DOMAIN, context={"source": "user"}
+    )
+    result = await hass.config_entries.flow.async_configure(
+        result["flow_id"], {CONF_TERRITORY: "empty"}
+    )
+    assert result["type"] == FlowResultType.ABORT
+    assert result["reason"] == "unsupported_tariff"

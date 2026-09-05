@@ -2,11 +2,12 @@
 
 from __future__ import annotations
 
+from datetime import date
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from tools.fetch_eversource_rates import fetch_eversource_rates
+from tools.fetch_eversource_rates import _display_date, fetch_eversource_rates
 
 
 @pytest.mark.asyncio
@@ -35,3 +36,11 @@ async def test_fetch_utility_constructs_keyword_only_client(rates) -> None:
     }
     assert result.supply_rate == rates.supply.rate
     assert result.total_variable_rate == rates.total_variable_rate
+    assert result.supply_effective_start == "August 1, 2026"
+    assert result.supply_effective_end == "January 31, 2027"
+
+
+def test_display_date_is_platform_independent() -> None:
+    """Avoid strftime %-d so Windows and POSIX format the same way."""
+    assert _display_date(date(2026, 9, 5)) == "September 5, 2026"
+    assert _display_date(None) is None

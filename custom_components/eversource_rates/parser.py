@@ -79,6 +79,11 @@ def _parse_date(value: str | None) -> date | None:
 
 def parse_supply_html(html: str, rate_class: str = "r") -> SupplyRate:
     """Extract NH Rate R supply beneath the semantic Current Supply Rates heading."""
+    if rate_class != "r":
+        # This parser only recognizes Rate R supply sentences; refuse mislabeling.
+        raise EversourceParseError(
+            f"Unsupported supply rate class for NH Rate R parser: {rate_class!r}"
+        )
     soup = BeautifulSoup(html, "html.parser")
     heading = next(
         (
@@ -195,6 +200,8 @@ def parse_delivery_html(html: str) -> DeliveryRates:  # noqa: C901
                 raise EversourceParseError(
                     "Customer charge is not a monthly dollar value"
                 )
+            if customer_charge is not None and customer_charge != amount:
+                raise EversourceParseError("Conflicting values for Customer Charge")
             customer_charge = amount
         elif unit == "USD/kWh":
             if _is_summary_row(label):
