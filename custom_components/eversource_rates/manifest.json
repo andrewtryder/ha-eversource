@@ -1,8 +1,8 @@
 {
   "domain": "eversource_rates",
   "name": "Eversource Rates",
-  "config_flow": true,
   "codeowners": ["@andrewtryder"],
+  "config_flow": true,
   "documentation": "https://github.com/andrewtryder/ha-eversource",
   "integration_type": "service",
   "iot_class": "cloud_polling",
