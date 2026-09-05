@@ -22,7 +22,8 @@
       "unsupported_tariff": "This tariff is not supported."
     },
     "abort": {
-      "already_configured": "This Eversource tariff is already configured."
+      "already_configured": "This Eversource tariff is already configured.",
+      "unsupported_tariff": "This tariff is not supported."
     }
   },
   "options": {
