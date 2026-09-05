@@ -9,6 +9,8 @@ from typing import Any
 DOMAIN = "eversource_rates"
 CONF_TERRITORY = "territory"
 CONF_RATE_CLASS = "rate_class"
+CONF_SUPPLY_PLAN = "supply_plan"
+CONF_SERVICE_AREA = "service_area"
 CONF_UPDATE_INTERVAL_HOURS = "update_interval_hours"
 DEFAULT_UPDATE_INTERVAL_HOURS = 24
 # Fixed select choices (hours). Minute-level polling is intentionally unsupported.
@@ -32,10 +34,12 @@ class Territory:
 TERRITORIES = {
     "nh": Territory("nh", "New Hampshire", "nh", ("r",)),
     "ct": Territory("ct", "Connecticut", "ct", ("1",)),
+    "wma": Territory("wma", "Western Massachusetts", "wma", ("r1",)),
 }
 RATE_CLASS_NAMES = {
     "r": "Residential Rate R",
     "1": "Rate 1 - Residential",
+    "r1": "R1 - Residential Non-Heating",
 }
 
 

@@ -51,9 +51,10 @@ def test_parse_ct_delivery_maps_groups_and_customer_charge() -> None:
 
 
 def test_parse_tariff_dispatch_ct() -> None:
+    from custom_components.eversource_rates.tariffs import TariffSelection
+
     supply, delivery = parse_tariff(
-        "ct",
-        "1",
+        TariffSelection("ct", "1"),
         (FIXTURES / "sanitized_ct_supply.html").read_text(),
         (FIXTURES / "sanitized_ct_delivery.html").read_text(),
     )
@@ -62,8 +63,10 @@ def test_parse_tariff_dispatch_ct() -> None:
 
 
 def test_unsupported_ct_rate_class_has_no_parser() -> None:
+    from custom_components.eversource_rates.tariffs import TariffSelection
+
     with pytest.raises(EversourceParseError, match="No tariff parser"):
-        get_tariff_parser("ct", "7")
+        get_tariff_parser(TariffSelection("ct", "7"))
 
 
 def test_ct_supply_rejects_wrong_rate_class() -> None:

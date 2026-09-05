@@ -63,6 +63,8 @@ class EversourceRates:
     source_supply_url: str
     source_delivery_url: str
     retrieved_at: datetime
+    supply_plan: str | None = None
+    service_area: str | None = None
 
     @property
     def total_variable_rate(self) -> Decimal:

@@ -15,6 +15,8 @@ from .api import (
 )
 from .const import (
     CONF_RATE_CLASS,
+    CONF_SERVICE_AREA,
+    CONF_SUPPLY_PLAN,
     CONF_TERRITORY,
     CONF_UPDATE_INTERVAL_HOURS,
     DEFAULT_UPDATE_INTERVAL_HOURS,
@@ -23,6 +25,13 @@ from .const import (
     TERRITORIES,
     update_interval_hours_from_options,
     update_interval_options,
+)
+from .tariffs import (
+    SERVICE_AREA_NAMES,
+    SUPPLY_PLAN_NAMES,
+    TariffSelection,
+    entry_unique_id,
+    get_tariff_definition,
 )
 
 
@@ -39,6 +48,28 @@ def _rate_class_options(territory_key: str) -> dict[str, str]:
     }
 
 
+def _supply_plan_options(territory: str, rate_class: str) -> dict[str, str]:
+    definition = get_tariff_definition(territory, rate_class)
+    if definition is None:
+        return {}
+    return {
+        plan: SUPPLY_PLAN_NAMES[plan]
+        for plan in definition.supply_plans
+        if plan in SUPPLY_PLAN_NAMES
+    }
+
+
+def _service_area_options(territory: str, rate_class: str) -> dict[str, str]:
+    definition = get_tariff_definition(territory, rate_class)
+    if definition is None:
+        return {}
+    return {
+        area: SERVICE_AREA_NAMES[area]
+        for area in definition.service_areas
+        if area in SERVICE_AREA_NAMES
+    }
+
+
 class EversourceRatesConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     """Set up a known, public Eversource tariff without user credentials."""
 
@@ -47,6 +78,9 @@ class EversourceRatesConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     def __init__(self) -> None:
         """Initialize transient multi-step selection state."""
         self._territory: str | None = None
+        self._rate_class: str | None = None
+        self._supply_plan: str | None = None
+        self._service_area: str | None = None
 
     @staticmethod
     @callback
@@ -55,6 +89,52 @@ class EversourceRatesConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     ) -> config_entries.OptionsFlow:
         """Return the options flow (reload-on-save; no update listener)."""
         return EversourceRatesOptionsFlow()
+
+    def _selection(self) -> TariffSelection:
+        assert self._territory is not None
+        assert self._rate_class is not None
+        return TariffSelection(
+            territory=self._territory,
+            rate_class=self._rate_class,
+            supply_plan=self._supply_plan,
+            service_area=self._service_area,
+        )
+
+    async def _async_finalize(self):
+        """Validate connectivity and create the config entry."""
+        selection = self._selection()
+        await self.async_set_unique_id(entry_unique_id(selection))
+        self._abort_if_unique_id_configured()
+        await EversourceClient(
+            async_get_clientsession(self.hass),
+            selection=selection,
+        ).async_get_rates()
+        title_parts = [
+            f"Eversource {TERRITORIES[selection.territory].name}",
+            RATE_CLASS_NAMES[selection.rate_class],
+        ]
+        if selection.supply_plan:
+            title_parts.append(SUPPLY_PLAN_NAMES[selection.supply_plan])
+        if selection.service_area:
+            title_parts.append(SERVICE_AREA_NAMES[selection.service_area])
+        data = {
+            CONF_TERRITORY: selection.territory,
+            CONF_RATE_CLASS: selection.rate_class,
+        }
+        if selection.supply_plan:
+            data[CONF_SUPPLY_PLAN] = selection.supply_plan
+        if selection.service_area:
+            data[CONF_SERVICE_AREA] = selection.service_area
+        return self.async_create_entry(title=" — ".join(title_parts), data=data)
+
+    def _map_client_error(self, err: Exception) -> str | None:
+        if isinstance(err, EversourceConnectionError):
+            return "cannot_connect"
+        if isinstance(err, EversourceTariffParseError):
+            return "invalid_tariff_data"
+        if isinstance(err, EversourceUnsupportedTariffError):
+            return "unsupported_tariff"
+        return None
 
     async def async_step_user(self, user_input=None):
         """Select the service territory first."""
@@ -84,7 +164,6 @@ class EversourceRatesConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         assert self._territory is not None
         options = _rate_class_options(self._territory)
         if not options:
-            # Malformed territory definition with no named rate classes.
             return self.async_abort(reason="unsupported_tariff")
         errors: dict[str, str] = {}
         if user_input is not None:
@@ -92,34 +171,20 @@ class EversourceRatesConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             if rate_class not in options:
                 errors["base"] = "unsupported_tariff"
             else:
-                await self.async_set_unique_id(
-                    f"{DOMAIN}_{self._territory}_{rate_class}"
-                )
-                self._abort_if_unique_id_configured()
+                self._rate_class = rate_class
+                definition = get_tariff_definition(self._territory, rate_class)
+                if definition and definition.supply_plans:
+                    return await self.async_step_supply_plan()
+                if definition and definition.service_areas:
+                    return await self.async_step_service_area()
                 try:
-                    await EversourceClient(
-                        async_get_clientsession(self.hass),
-                        territory=TERRITORIES[self._territory].key,
-                        rate_class=rate_class,
-                    ).async_get_rates()
-                except EversourceConnectionError:
-                    errors["base"] = "cannot_connect"
-                except EversourceTariffParseError:
-                    errors["base"] = "invalid_tariff_data"
-                except EversourceUnsupportedTariffError:
-                    errors["base"] = "unsupported_tariff"
-                else:
-                    title = (
-                        f"Eversource {TERRITORIES[self._territory].name} "
-                        f"{RATE_CLASS_NAMES[rate_class]}"
-                    )
-                    return self.async_create_entry(
-                        title=title,
-                        data={
-                            CONF_TERRITORY: self._territory,
-                            CONF_RATE_CLASS: rate_class,
-                        },
-                    )
+                    return await self._async_finalize()
+                except (
+                    EversourceConnectionError,
+                    EversourceTariffParseError,
+                    EversourceUnsupportedTariffError,
+                ) as err:
+                    errors["base"] = self._map_client_error(err) or "unsupported_tariff"
 
         default_rate = next(iter(options))
         return self.async_show_form(
@@ -127,6 +192,81 @@ class EversourceRatesConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             data_schema=vol.Schema(
                 {
                     vol.Required(CONF_RATE_CLASS, default=default_rate): vol.In(
+                        options
+                    ),
+                }
+            ),
+            errors=errors,
+        )
+
+    async def async_step_supply_plan(self, user_input=None):
+        """Select Fixed vs Monthly Variable Basic Service when required."""
+        assert self._territory is not None
+        assert self._rate_class is not None
+        options = _supply_plan_options(self._territory, self._rate_class)
+        if not options:
+            return self.async_abort(reason="unsupported_tariff")
+        errors: dict[str, str] = {}
+        if user_input is not None:
+            supply_plan = user_input[CONF_SUPPLY_PLAN]
+            if supply_plan not in options:
+                errors["base"] = "unsupported_tariff"
+            else:
+                self._supply_plan = supply_plan
+                definition = get_tariff_definition(self._territory, self._rate_class)
+                if definition and definition.service_areas:
+                    return await self.async_step_service_area()
+                try:
+                    return await self._async_finalize()
+                except (
+                    EversourceConnectionError,
+                    EversourceTariffParseError,
+                    EversourceUnsupportedTariffError,
+                ) as err:
+                    errors["base"] = self._map_client_error(err) or "unsupported_tariff"
+
+        default_plan = next(iter(options))
+        return self.async_show_form(
+            step_id="supply_plan",
+            data_schema=vol.Schema(
+                {
+                    vol.Required(CONF_SUPPLY_PLAN, default=default_plan): vol.In(
+                        options
+                    ),
+                }
+            ),
+            errors=errors,
+        )
+
+    async def async_step_service_area(self, user_input=None):
+        """Select EMA service area when Energy Efficiency charges differ."""
+        assert self._territory is not None
+        assert self._rate_class is not None
+        options = _service_area_options(self._territory, self._rate_class)
+        if not options:
+            return self.async_abort(reason="unsupported_tariff")
+        errors: dict[str, str] = {}
+        if user_input is not None:
+            service_area = user_input[CONF_SERVICE_AREA]
+            if service_area not in options:
+                errors["base"] = "unsupported_tariff"
+            else:
+                self._service_area = service_area
+                try:
+                    return await self._async_finalize()
+                except (
+                    EversourceConnectionError,
+                    EversourceTariffParseError,
+                    EversourceUnsupportedTariffError,
+                ) as err:
+                    errors["base"] = self._map_client_error(err) or "unsupported_tariff"
+
+        default_area = next(iter(options))
+        return self.async_show_form(
+            step_id="service_area",
+            data_schema=vol.Schema(
+                {
+                    vol.Required(CONF_SERVICE_AREA, default=default_area): vol.In(
                         options
                     ),
                 }

@@ -49,11 +49,15 @@ class TimeoutSession:
         raise TimeoutError
 
 
-def _client(session, *, territory="nh", rate_class="r") -> EversourceClient:
+def _client(
+    session, *, territory="nh", rate_class="r", supply_plan=None, service_area=None
+) -> EversourceClient:
     return EversourceClient(
         session,
         territory=territory,
         rate_class=rate_class,
+        supply_plan=supply_plan,
+        service_area=service_area,
     )
 
 
@@ -93,6 +97,27 @@ def test_ct_fetch_uses_suffixed_urls_without_cookie() -> None:
         f"{DELIVERY_URL}/ct",
     ]
     assert all(call[1]["headers"] == {} for call in session.calls)
+
+
+def test_wma_fetch_uses_suffixed_urls_without_cookie() -> None:
+    session = FakeSession(
+        [
+            FakeResponse(200, (FIXTURES / "sanitized_wma_supply.html").read_text()),
+            FakeResponse(200, (FIXTURES / "sanitized_wma_delivery.html").read_text()),
+        ]
+    )
+    rates = asyncio.run(
+        _client(
+            session, territory="wma", rate_class="r1", supply_plan="fixed"
+        ).async_get_rates()
+    )
+    assert rates.territory == "wma"
+    assert rates.rate_class == "r1"
+    assert rates.supply_plan == "fixed"
+    assert rates.source_supply_url == f"{SUPPLY_URL}/wma"
+    assert rates.source_delivery_url == f"{DELIVERY_URL}/wma"
+    assert all(call[1]["headers"] == {} for call in session.calls)
+    assert rates.supply.rate == Decimal("0.15934")
 
 
 def test_nh_fetch_cookie_comes_from_tariff_source(
@@ -149,6 +174,17 @@ def test_unsupported_tariff_fails_before_network_access() -> None:
         asyncio.run(
             _client(FakeSession([]), territory="ema", rate_class="r1").async_get_rates()
         )
+
+
+def test_client_requires_selection_or_territory_rate_class() -> None:
+    with pytest.raises(TypeError, match="selection="):
+        EversourceClient(FakeSession([]))
+
+
+def test_client_selection_property() -> None:
+    client = _client(FakeSession([]), territory="ct", rate_class="1")
+    assert client.selection.territory == "ct"
+    assert client.selection.rate_class == "1"
 
 
 def test_malformed_supply_fails_safely() -> None:

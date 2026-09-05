@@ -16,10 +16,10 @@ It provides **price data only**. You still need a separate cumulative **kWh** co
 | --- | --- |
 | New Hampshire — Residential Rate R | **Supported and maintainer-tested** |
 | Connecticut — Rate 1 (Residential) | **Supported** from public tariff data |
+| Western Massachusetts — R1 Non-Heating | **Supported** from public tariff data (Fixed / Monthly Variable Basic Service) |
 | Eastern Massachusetts | Investigated, not yet supported |
-| Western Massachusetts | Investigated, not yet supported |
 
-**Electricity only.** Natural gas is not supported. The current integration also assumes **Eversource default service supply**; third-party supplier pricing and time-of-use tariffs (including CT Rate 7) are not yet supported.
+**Electricity only.** Natural gas is not supported. The current integration also assumes **Eversource default service supply**; third-party supplier pricing, time-of-use tariffs (including CT Rate 7), heat-pump rates, and assistance rates are not yet supported.
 
 ## What it does
 
@@ -40,7 +40,7 @@ Look at the detailed **Delivery** section of your Eversource electric bill, typi
 
 - New Hampshire residential: look for **Rate R** or **Rate R Residential Services**.
 - Connecticut residential: look for **Rate 1**.
-
+- Western Massachusetts residential: look for **R1** (Residential, Non-Heating), then choose Fixed or Monthly Variable Basic Service.
 Your **rate class** is different from your electricity **supplier**. This integration currently uses Eversource default-service supply pricing.
 
 ## Home Assistant Energy dashboard
@@ -61,8 +61,7 @@ Do not use only the supply or delivery sensor; the total-rate sensor combines bo
 
 ## Main entities
 
-New Hampshire Rate R keeps short entity IDs. Connecticut Rate 1 uses territory-prefixed IDs such as `sensor.eversource_ct_1_total_electricity_rate`.
-
+New Hampshire Rate R keeps short entity IDs. Connecticut Rate 1 uses territory-prefixed IDs such as `sensor.eversource_ct_1_total_electricity_rate`. Western Massachusetts R1 includes the supply plan, such as `sensor.eversource_wma_r1_fixed_total_electricity_rate`.
 | Entity (NH Rate R) | Purpose |
 | --- | --- |
 | `sensor.eversource_total_electricity_rate` | Supply + variable delivery in USD/kWh; use this in the Energy dashboard |
