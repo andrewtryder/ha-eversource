@@ -1,0 +1,75 @@
+"""Object-ID strategy tests for multi-territory readiness."""
+
+from __future__ import annotations
+
+import pytest
+
+from custom_components.eversource_rates.const import DOMAIN
+from custom_components.eversource_rates.entity_ids import (
+    sensor_object_id,
+    slugify_object_id_part,
+)
+
+
+@pytest.mark.parametrize(
+    ("sensor_key", "expected"),
+    [
+        ("supply_rate", "eversource_supply_rate"),
+        ("delivery_rate", "eversource_delivery_rate"),
+        ("total_electricity_rate", "eversource_total_electricity_rate"),
+        ("customer_charge", "eversource_customer_charge"),
+        ("distribution_charge", "eversource_distribution_charge"),
+        ("system_benefits_charge", "eversource_system_benefits_charge"),
+    ],
+)
+def test_nh_rate_r_object_ids_remain_legacy(sensor_key: str, expected: str) -> None:
+    """Preserve the documented NH Rate R entity object IDs exactly."""
+    assert sensor_object_id("nh", "r", sensor_key) == expected
+
+
+def test_synthetic_ct_rate_classes_include_territory_and_do_not_collide() -> None:
+    """Future CT rate classes must not share object IDs."""
+    rate_1 = sensor_object_id("ct", "rate_1", "total_electricity_rate")
+    rate_7 = sensor_object_id("ct", "rate_7", "total_electricity_rate")
+    assert rate_1 == "eversource_ct_rate_1_total_electricity_rate"
+    assert rate_7 == "eversource_ct_rate_7_total_electricity_rate"
+    assert rate_1 != rate_7
+
+
+def test_synthetic_ema_and_wma_r1_do_not_collide() -> None:
+    """Distinct MA territories with the same rate class must not collide."""
+    ema = sensor_object_id("ema", "r1", "total_electricity_rate")
+    wma = sensor_object_id("wma", "r1", "total_electricity_rate")
+    assert ema == "eversource_ema_r1_total_electricity_rate"
+    assert wma == "eversource_wma_r1_total_electricity_rate"
+    assert ema != wma
+
+
+@pytest.mark.parametrize(
+    ("raw", "expected"),
+    [
+        ("Rate 1", "rate_1"),
+        ("r1-hp", "r1_hp"),
+        ("System Benefits Charge", "system_benefits_charge"),
+        ("  Total.Electricity/Rate  ", "total_electricity_rate"),
+    ],
+)
+def test_slug_normalization_is_deterministic(raw: str, expected: str) -> None:
+    """Punctuation and spacing normalize to stable object-ID parts."""
+    assert slugify_object_id_part(raw) == expected
+    assert sensor_object_id("ct", raw, "supply_rate").endswith(
+        f"_{expected}_supply_rate"
+    )
+
+
+def test_nh_unique_id_scheme_unchanged() -> None:
+    """Entity unique IDs remain domain_territory_rate_class_key."""
+    territory = "nh"
+    rate_class = "r"
+    key = "total_electricity_rate"
+    unique_id = "_".join((DOMAIN, territory, rate_class, key))
+    assert unique_id == "eversource_rates_nh_r_total_electricity_rate"
+    assert (
+        sensor_object_id(territory, rate_class, key)
+        == "eversource_total_electricity_rate"
+    )
