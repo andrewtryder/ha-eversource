@@ -15,6 +15,9 @@ from .parser import EversourceParseError, parse_delivery_html, parse_supply_html
 
 _LOGGER = logging.getLogger(__name__)
 
+# Logical territory + rate class pairs implemented by this client.
+SUPPORTED_TARIFFS = frozenset({("nh", "r")})
+
 
 class EversourceError(Exception):
     """Base exception for this client."""
@@ -33,13 +36,23 @@ class EversourceTariffParseError(EversourceError):
 
 
 class EversourceClient:
-    """Retrieve public, server-rendered tariff pages using an explicit segment."""
+    """Retrieve public tariff pages for one logical territory and rate class."""
 
     def __init__(
-        self, session: aiohttp.ClientSession, segment: str, rate_class: str
+        self,
+        session: aiohttp.ClientSession,
+        *,
+        territory: str,
+        segment: str,
+        rate_class: str,
     ) -> None:
-        """Initialize the client with Home Assistant's shared session."""
+        """Initialize the client with Home Assistant's shared session.
+
+        ``territory`` is the integration's logical tariff identity.
+        ``segment`` is only the Sitefinity ``.SEGMENT`` cookie value used for HTTP.
+        """
         self._session = session
+        self._territory = territory
         self._segment = segment
         self._rate_class = rate_class
 
@@ -64,7 +77,7 @@ class EversourceClient:
 
     async def async_get_rates(self) -> EversourceRates:
         """Fetch supply and delivery concurrently and validate the parsed tariff."""
-        if (self._segment, self._rate_class) != ("nh", "r"):
+        if (self._territory, self._rate_class) not in SUPPORTED_TARIFFS:
             raise EversourceUnsupportedTariffError("Unsupported Eversource tariff")
         supply_html, delivery_html = await asyncio.gather(
             self._async_fetch(SUPPLY_URL), self._async_fetch(DELIVERY_URL)
@@ -75,7 +88,7 @@ class EversourceClient:
         except EversourceParseError as err:
             raise EversourceTariffParseError(str(err)) from err
         rates = EversourceRates(
-            territory="nh",
+            territory=self._territory,
             rate_class=self._rate_class,
             supply=supply,
             delivery=delivery,
@@ -88,7 +101,9 @@ class EversourceClient:
                 "Total variable rate outside plausible range"
             )
         _LOGGER.debug(
-            "Parsed Eversource NH Rate R tariff with %d delivery components",
+            "Parsed Eversource %s %s tariff with %d delivery components",
+            self._territory,
+            self._rate_class,
             len(delivery.variable_components),
         )
         return rates

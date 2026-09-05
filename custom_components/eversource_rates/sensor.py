@@ -18,6 +18,7 @@ from homeassistant.helpers.update_coordinator import CoordinatorEntity
 from . import EversourceConfigEntry
 from .const import DOMAIN, RATE_CLASS_NAMES, TERRITORIES
 from .coordinator import EversourceRatesCoordinator
+from .entity_ids import sensor_object_id
 
 if TYPE_CHECKING:
     from homeassistant.core import HomeAssistant
@@ -76,8 +77,13 @@ class EversourceSensor(CoordinatorEntity[EversourceRatesCoordinator], SensorEnti
             )
         )
         # Assign the documented ID before Home Assistant registers the entity.
-        # This keeps automations independent of the territory/rate-class device name.
-        self.entity_id = f"sensor.eversource_{description.key}"
+        # NH Rate R keeps historical short IDs; other tariffs include territory/rate.
+        object_id = sensor_object_id(
+            coordinator.data.territory,
+            coordinator.data.rate_class,
+            description.key,
+        )
+        self.entity_id = f"sensor.{object_id}"
 
     @property
     def device_info(self) -> DeviceInfo:

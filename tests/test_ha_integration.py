@@ -55,6 +55,11 @@ async def test_setup_creates_primary_and_diagnostic_sensors(
     assert total.attributes["supply_effective_date"] == "2026-08-01"
     assert hass.states.get("sensor.eversource_customer_charge").state == "19.81"
     assert hass.states.get("sensor.eversource_distribution_charge") is None
+    registry = er.async_get(hass)
+    assert (
+        registry.async_get("sensor.eversource_total_electricity_rate").unique_id
+        == "eversource_rates_nh_r_total_electricity_rate"
+    )
 
     for entity_id in (
         "sensor.eversource_supply_rate",
@@ -64,7 +69,6 @@ async def test_setup_creates_primary_and_diagnostic_sensors(
     ):
         _assert_rate_sensor_metadata(hass, entity_id)
 
-    registry = er.async_get(hass)
     registry.async_update_entity(
         "sensor.eversource_distribution_charge", disabled_by=None
     )
@@ -98,7 +102,11 @@ async def test_setup_uses_territory_sitefinity_segment(
         client.return_value.async_get_rates = AsyncMock(return_value=rates)
         assert await hass.config_entries.async_setup(entry.entry_id)
         await hass.async_block_till_done()
-    assert client.call_args.args[1:] == ("sitefinity-nh", "r")
+    assert client.call_args.kwargs == {
+        "territory": "nh",
+        "segment": "sitefinity-nh",
+        "rate_class": "r",
+    }
 
 
 @pytest.mark.parametrize(
