@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.4](https://github.com/andrewtryder/ha-eversource/compare/v0.1.3...v0.1.4) (2026-09-05)
+
+
+### Bug Fixes
+
+* allow tariff tooling imports without Home Assistant ([#26](https://github.com/andrewtryder/ha-eversource/issues/26)) ([14dade3](https://github.com/andrewtryder/ha-eversource/commit/14dade3a3182a911a4cddfb6a31d2196081a97ab))
+
 ## [0.1.3](https://github.com/andrewtryder/ha-eversource/compare/v0.1.2...v0.1.3) (2026-09-05)
 
 
