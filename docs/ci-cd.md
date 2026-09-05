@@ -4,9 +4,9 @@
 
 The `Validate` workflow runs on pull requests, pushes to `main`, a daily schedule, and manual dispatch. It covers HACS, Hassfest, Ruff, and pytest (Python 3.14, ≥96% coverage). Those checks are the PR correctness gates.
 
-## Live Eversource smoke
+## Live Eversource checks
 
-`Live Eversource smoke` fetches the public New Hampshire Rate R tariff pages on a schedule (and via `workflow_dispatch`). It is an **external dependency health check**, not a branch-protection or PR merge requirement. Eversource outages must not block ordinary code merges.
+There is no scheduled CI job against live Eversource pages. Public tariff fetch/parse health is verified during canary testing (for example `python tools/fetch_eversource_rates.py`) so Actions is not flaky when Eversource changes audience cookies or page shape.
 
 ## Release Please authentication
 
