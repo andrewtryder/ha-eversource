@@ -1,139 +1,137 @@
-# Home Assistant / HACS Custom Integration Architecture
+# Eversource Rates — integration architecture
 
-## 1. Executive Design Overview
-This document outlines the architecture for the **Eversource New Hampshire Electricity Rates** custom integration for Home Assistant (distributable via HACS).
+This document describes the **current** Home Assistant / HACS integration architecture for public Eversource **electricity** tariffs.
 
-The integration delivers real-time and scheduled electricity tariff rates to Home Assistant, allowing users to:
-- Accurately configure Home Assistant's built-in **Energy Dashboard**.
-- Automate high-draw appliances (EV charging, heat pumps, battery storage, water heaters) based on dynamic or fixed tariff schedules.
-- Track total electricity expenditure including fixed customer charges and individual delivery adjustments.
+Production code under `custom_components/eversource_rates/` is authoritative. This document is non-normative: it explains how the integration works today and notes future direction. It is **not** a promise of Connecticut, Massachusetts, gas, time-of-day, or third-party supplier support.
+
+For CT / Eastern MA / Western MA research notes, see [investigation/multi_territory_architecture.md](../investigation/multi_territory_architecture.md).
 
 ---
 
-## 2. Core Architectural Principles
-1. **Zero Credential Requirement:** Operates entirely over public, unauthenticated HTTP endpoints. Users never input passwords, account numbers, or session cookies.
-2. **Deterministic Location Handling:** Uses the public `.SEGMENT=nh` cookie to guarantee New Hampshire Rate R data regardless of the host's network IP location.
-3. **Robust Decimal Arithmetic:** Implements Python's `decimal.Decimal` throughout to prevent floating-point calculation errors on financial tariffs.
-4. **Resilience & State Preservation:** Employs Home Assistant's `DataUpdateCoordinator` with stale-data preservation so that transient network glitches or temporary web hiccups never clear valid rate state.
-5. **Low Polling Frequency:** Polls every 6 to 12 hours (with manual refresh support), reflecting the real-world tariff change schedule (bi-annual and quarterly).
+## Current production scope
+
+| Item | Value |
+| --- | --- |
+| Domain / path | `eversource_rates` / `custom_components/eversource_rates` |
+| Commodity | Electricity only (natural gas is out of scope) |
+| Territory | New Hampshire |
+| Rate class | Residential Rate R |
+| Supply model | Eversource default / basic service from public tariff pages |
+| Polling | Every **12 hours** via `DataUpdateCoordinator` (not user-configurable) |
+| Auth | None — public HTTP only; Sitefinity audience cookie `.SEGMENT=nh` |
+
+Setup selectors only offer production-supported combinations. Investigated CT/MA identifiers must not appear in the UI until runtime parsers exist.
 
 ---
 
-## 3. Recommended Entity Model
+## Module layout
 
-### Primary Sensor Entities
+```text
+custom_components/eversource_rates/
+├── __init__.py          # Config-entry setup; builds client + coordinator
+├── manifest.json        # Domain, HACS metadata, requirements (version via Release Please)
+├── const.py             # DOMAIN, URLs, UPDATE_INTERVAL, TERRITORIES
+├── config_flow.py       # Two-step flow: territory → electric rate class
+├── coordinator.py       # DataUpdateCoordinator wrapper
+├── api.py               # EversourceClient (async public fetch)
+├── parser.py            # Semantic HTML → Decimal models (fail-closed)
+├── models.py            # Immutable SupplyRate / DeliveryRates / EversourceRates
+├── sensor.py            # Primary + diagnostic delivery-component sensors
+├── entity_ids.py        # Stable object-ID strategy (legacy NH Rate R short IDs)
+├── strings.json
+└── translations/en.json
+```
 
-| Entity ID | Friendly Name | State / Unit | State Class | Device Class | Description |
-|---|---|---|---|---|---|
-| `sensor.eversource_total_variable_rate` | Eversource Total Variable Rate | `0.25918` USD/kWh | `measurement` | `monetary` | Sum of Supply + Variable Delivery (used directly by Energy Dashboard) |
-| `sensor.eversource_supply_rate` | Eversource Supply Rate | `0.14009` USD/kWh | `measurement` | `monetary` | Published standard default service supply rate |
-| `sensor.eversource_delivery_rate` | Eversource Delivery Rate | `0.11909` USD/kWh | `measurement` | `monetary` | Sum of all variable delivery components |
-| `sensor.eversource_customer_charge` | Eversource Monthly Customer Charge | `19.81` USD | `measurement` | `monetary` | Fixed monthly account fee |
+Developer utility (not part of the HA runtime path):
 
-### Diagnostic Entities (Delivery Breakdown)
-Exposed as diagnostic sensors (disabled by default or under the Diagnostic category):
-
-- `sensor.eversource_distribution_charge` (`0.06727` USD/kWh)
-- `sensor.eversource_regulatory_reconciliation_adjustment` (`0.00296` USD/kWh)
-- `sensor.eversource_pole_plant_adjustment` (`-0.00029` USD/kWh)
-- `sensor.eversource_transmission_charge` (`0.04445` USD/kWh)
-- `sensor.eversource_stranded_cost_recovery_charge` (`-0.00148` USD/kWh)
-- `sensor.eversource_system_benefits_charge` (`0.00618` USD/kWh)
-
-### Entity Attributes & Metadata
-Primary sensors will expose metadata in `extra_state_attributes`:
-```json
-{
-  "effective_start": "August 1, 2026",
-  "effective_end": "January 31, 2027",
-  "tariff_class": "Rate R (Residential)",
-  "state": "NH",
-  "source_urls": {
-    "supply": "https://www.eversource.com/residential/account-billing/manage-bill/about-your-bill/rates-tariffs/electric-supply-rates",
-    "delivery": "https://www.eversource.com/residential/account-billing/manage-bill/about-your-bill/rates-tariffs/electric-delivery-rates"
-  },
-  "last_updated": "2026-09-05T17:15:00+00:00"
-}
+```text
+tools/fetch_eversource_rates.py
 ```
 
 ---
 
-## 4. Integration Component Structure
+## Data flow
 
+```text
+Public supply URL  ──┐
+                     ├── EversourceClient (Cookie: .SEGMENT=<segment>)
+Public delivery URL ─┘              │
+                                    ▼
+                              parser.py
+                                    │
+                                    ▼
+                           EversourceRates
+                                    │
+                                    ▼
+                      EversourceRatesCoordinator
+                                    │
+                                    ▼
+                     Primary + diagnostic sensors
 ```
-custom_components/eversource_tariffs/
-├── __init__.py           # Component setup and Coordinator initialization
-├── manifest.json         # Integration manifest, domain, requirements, version
-├── const.py              # Constants (DOMAIN, URLs, default intervals, ranges)
-├── config_flow.py        # User UI setup flow in HA Settings -> Integrations
-├── coordinator.py        # DataUpdateCoordinator managing fetches & caching
-├── parser.py             # Parser logic (adapted from tools/fetch_eversource_rates.py)
-├── sensor.py             # Sensor entity implementations
-├── strings.json          # Internationalization / UI labels
-└── translations/
-    └── en.json
-```
+
+1. **Fetch** — unauthenticated `GET` of the public supply and delivery tariff pages with the territory’s Sitefinity `.SEGMENT` cookie (NH uses `nh`).
+2. **Parse** — BeautifulSoup + regex extract supply and delivery rows into `Decimal` values. Missing required NH riders, malformed units, conflicting duplicates, or conflicting delivery **total/subtotal** rows fail closed.
+3. **Coordinate** — Home Assistant’s coordinator retains prior data when a refresh raises `UpdateFailed` (standard HA behavior). Successful refreshes always publish a new snapshot, including an updated `retrieved_at`.
+4. **Expose** — sensors publish current prices for the Energy dashboard and diagnostics.
 
 ---
 
-## 5. Implementation Details
+## Config flow
 
-### DataUpdateCoordinator Pattern
-The `DataUpdateCoordinator` handles scheduling, error catching, and data distribution:
+Two steps (labels in `strings.json` / `translations/en.json`):
 
-```python
-class EversourceDataUpdateCoordinator(DataUpdateCoordinator[TariffRates]):
-    """Manages fetching Eversource tariff rates."""
+1. **Service territory** — options from `TERRITORIES`.
+2. **Electric rate class** — options from `Territory.supported_rate_classes` for the chosen territory.
 
-    def __init__(self, hass: HomeAssistant, session: aiohttp.ClientSession) -> None:
-        super().__init__(
-            hass,
-            _LOGGER,
-            name="Eversource NH Tariffs",
-            update_interval=timedelta(hours=6),
-        )
-        self.session = session
-        self._last_valid_data: Optional[TariffRates] = None
-
-    async def _async_update_data(self) -> TariffRates:
-        """Fetch data from Eversource."""
-        try:
-            data = await fetch_eversource_rates(session=self.session)
-            self._last_valid_data = data
-            return data
-        except TariffParseError as err:
-            _LOGGER.warning("Parsing Eversource tariffs failed: %s", err)
-            if self._last_valid_data is not None:
-                _LOGGER.info(
-                    "Preserving last known valid tariffs from %s",
-                    self._last_valid_data.retrieval_timestamp,
-                )
-                return self._last_valid_data
-            raise UpdateFailed(f"Error fetching Eversource tariffs: {err}") from err
-        except aiohttp.ClientError as err:
-            if self._last_valid_data is not None:
-                _LOGGER.info(
-                    "Preserving last known valid tariffs during network outage"
-                )
-                return self._last_valid_data
-            raise UpdateFailed(
-                f"Network error communicating with Eversource: {err}"
-            ) from err
-```
-
-### Config Flow Experience
-Because no credentials are required, the config flow is remarkably simple:
-1. User clicks **Add Integration** $\rightarrow$ **Eversource Rates**.
-2. A single step confirms region (defaults to **New Hampshire — Rate R (Residential)**).
-3. Option to select polling frequency (default: 6 hours).
-4. Entry is created instantly; entities become available immediately.
+Config entry data keys remain `territory` and `rate_class`. There is no polling-interval option.
 
 ---
 
-## 6. Integration with Home Assistant Energy Dashboard
-Home Assistant's Energy dashboard natively supports variable pricing entities:
-1. Navigate to **Settings** $\rightarrow$ **Dashboards** $\rightarrow$ **Energy**.
-2. Under **Electricity Grid** $\rightarrow$ **Grid Consumption**, edit the consumption meter.
-3. Select **"Use an entity tracking the total costs"** or **"Use an entity with current price"**.
-4. Choose `sensor.eversource_total_variable_rate`.
-5. Home Assistant will automatically multiply hourly kWh consumption by the exact live tariff ($0.25918 / kWh), tracking accurate energy expenses over time.
+## Entity model
+
+Rate sensors use `SensorStateClass.MEASUREMENT` and **do not** use `SensorDeviceClass.MONETARY` (inappropriate for USD/kWh).
+
+### Primary entities (NH Rate R object IDs)
+
+| Entity ID | Meaning |
+| --- | --- |
+| `sensor.eversource_supply_rate` | Default-service supply USD/kWh |
+| `sensor.eversource_delivery_rate` | Sum of variable delivery components USD/kWh |
+| `sensor.eversource_total_electricity_rate` | Supply + variable delivery (Energy dashboard current price) |
+| `sensor.eversource_customer_charge` | Fixed monthly customer charge (not a per-kWh price) |
+
+Non-NH combinations would use `eversource_<territory>_<rate>_<key>` via `entity_ids.sensor_object_id()` once supported.
+
+### Diagnostic delivery components
+
+Disabled-by-default diagnostic sensors expose each parsed `/kWh` delivery rider. Entities are created for components present at setup. If a dynamic rider later disappears from the tariff, the entity stays registered and becomes **unavailable**; if it reappears, it becomes available again. Entity IDs are not deleted or recreated dynamically.
+
+---
+
+## Arithmetic and Energy dashboard
+
+All money math uses exact `decimal.Decimal`.
+
+```text
+supply
++ Σ variable delivery components
+= total_variable_rate  →  sensor.eversource_total_electricity_rate
+```
+
+The fixed monthly customer charge is **excluded** from the Energy dashboard price so Home Assistant’s incremental kWh cost is not distorted.
+
+This integration provides **price only**. A separate cumulative **kWh** consumption sensor is required for Energy dashboard costs.
+
+---
+
+## Future territory architecture
+
+Internal models already carry logical `territory` separately from Sitefinity `segment`. Production `TERRITORIES` currently lists only New Hampshire Rate R. CT/EMA/WMA identifiers and bill shapes are documented in the investigation note linked above; they must not be advertised in selectors until parsers and tests land.
+
+---
+
+## Versioning and CI
+
+Release Please owns `manifest.json` version, `CHANGELOG.md`, and GitHub tags/releases. Do not manually bump versions.
+
+See [ci-cd.md](ci-cd.md) for validation gates, the live Eversource smoke workflow, and Release Please token setup.
