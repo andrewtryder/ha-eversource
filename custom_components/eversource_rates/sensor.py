@@ -6,9 +6,9 @@ from decimal import Decimal
 from typing import TYPE_CHECKING
 
 from homeassistant.components.sensor import (
-    SensorDeviceClass,
     SensorEntity,
     SensorEntityDescription,
+    SensorStateClass,
 )
 from homeassistant.const import EntityCategory
 from homeassistant.helpers.device_registry import DeviceInfo
@@ -30,25 +30,25 @@ PRIMARY_DESCRIPTIONS = (
         key="supply_rate",
         name="Eversource Supply Rate",
         native_unit_of_measurement=USD_PER_KWH,
-        device_class=SensorDeviceClass.MONETARY,
+        state_class=SensorStateClass.MEASUREMENT,
     ),
     SensorEntityDescription(
         key="delivery_rate",
         name="Eversource Delivery Rate",
         native_unit_of_measurement=USD_PER_KWH,
-        device_class=SensorDeviceClass.MONETARY,
+        state_class=SensorStateClass.MEASUREMENT,
     ),
     SensorEntityDescription(
         key="total_electricity_rate",
         name="Eversource Total Electricity Rate",
         native_unit_of_measurement=USD_PER_KWH,
-        device_class=SensorDeviceClass.MONETARY,
+        state_class=SensorStateClass.MEASUREMENT,
     ),
     SensorEntityDescription(
         key="customer_charge",
         name="Eversource Customer Charge",
         native_unit_of_measurement=USD_PER_MONTH,
-        device_class=SensorDeviceClass.MONETARY,
+        state_class=SensorStateClass.MEASUREMENT,
     ),
 )
 
@@ -146,7 +146,7 @@ class EversourceComponentSensor(EversourceSensor):
                 key=key,
                 name=name,
                 native_unit_of_measurement=USD_PER_KWH,
-                device_class=SensorDeviceClass.MONETARY,
+                state_class=SensorStateClass.MEASUREMENT,
             ),
         )
 

@@ -28,8 +28,24 @@ def rates() -> EversourceRates:
         "distribution_charge": DeliveryComponent(
             "distribution_charge", "Distribution Charge", Decimal("0.06727")
         ),
+        "regulatory_reconciliation_adjustment": DeliveryComponent(
+            "regulatory_reconciliation_adjustment",
+            "Regulatory Reconciliation Adjustment",
+            Decimal("0.00296"),
+        ),
+        "pole_plant_adjustment": DeliveryComponent(
+            "pole_plant_adjustment", "Pole Plant Adjustment", Decimal("-0.00029")
+        ),
         "transmission_charge": DeliveryComponent(
             "transmission_charge", "Transmission Charge", Decimal("0.04445")
+        ),
+        "stranded_cost_recovery_charge": DeliveryComponent(
+            "stranded_cost_recovery_charge",
+            "Stranded Cost Recovery Charge",
+            Decimal("-0.00148"),
+        ),
+        "system_benefits_charge": DeliveryComponent(
+            "system_benefits_charge", "System Benefits Charge", Decimal("0.00618")
         ),
     }
     return EversourceRates(
