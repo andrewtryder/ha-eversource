@@ -3,16 +3,13 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Any
+
+from homeassistant.config_entries import ConfigEntry
+from homeassistant.core import HomeAssistant
 
 from .api import EversourceClient
 from .const import CONF_RATE_CLASS, CONF_TERRITORY, TERRITORIES
-
-if TYPE_CHECKING:
-    from homeassistant.config_entries import ConfigEntry
-    from homeassistant.core import HomeAssistant
-
-    from .coordinator import EversourceRatesCoordinator
+from .coordinator import EversourceRatesCoordinator
 
 
 @dataclass(slots=True)
@@ -22,18 +19,13 @@ class EversourceRuntimeData:
     coordinator: EversourceRatesCoordinator
 
 
-if TYPE_CHECKING:
-    type EversourceConfigEntry = ConfigEntry[EversourceRuntimeData]
-else:
-    EversourceConfigEntry = Any
+type EversourceConfigEntry = ConfigEntry[EversourceRuntimeData]
 
 
 async def async_setup_entry(hass: HomeAssistant, entry: EversourceConfigEntry) -> bool:
     """Set up Eversource Rates from a config entry."""
     from homeassistant.const import Platform
     from homeassistant.helpers.aiohttp_client import async_get_clientsession
-
-    from .coordinator import EversourceRatesCoordinator
 
     territory = TERRITORIES[entry.data[CONF_TERRITORY]]
     client = EversourceClient(
