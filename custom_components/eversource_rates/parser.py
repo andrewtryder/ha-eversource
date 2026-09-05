@@ -38,6 +38,27 @@ _KNOWN_COMPONENTS = {
     "system benefits": "system_benefits_charge",
 }
 _REQUIRED_COMPONENTS = frozenset(_KNOWN_COMPONENTS.values())
+_SUMMARY_LABELS = frozenset(
+    {
+        "total",
+        "subtotal",
+        "delivery total",
+        "total delivery",
+        "total delivery rate",
+        "total delivery rates",
+        "total delivery charge",
+        "total delivery charges",
+        "total variable rate",
+        "total variable rates",
+        "total variable delivery",
+        "total variable delivery rate",
+        "total variable delivery rates",
+    }
+)
+_SUMMARY_PATTERN = re.compile(
+    r"^(?:total|subtotal)(?:\s+(?:variable|delivery))*(?:\s+(?:rate|rates|charge|charges))?$"
+    r"|^delivery\s+total(?:\s+(?:rate|rates|charge|charges))?$"
+)
 
 
 def _decimal(value: str, context: str) -> Decimal:
@@ -89,6 +110,17 @@ def _component_key(label: str) -> str:
         if phrase in normalized:
             return key
     return re.sub(r"[^a-z0-9]+", "_", normalized).strip("_")
+
+
+def _is_summary_row(label: str) -> bool:
+    """Return True for non-additive total/subtotal rows in the delivery table.
+
+    Legitimate rider names that merely contain the word "total" in another
+    context are not treated as summaries.
+    """
+    normalized = " ".join(label.lower().split())
+    normalized = re.sub(r"\s*\([^)]*\)\s*$", "", normalized).strip()
+    return normalized in _SUMMARY_LABELS or bool(_SUMMARY_PATTERN.fullmatch(normalized))
 
 
 def _parse_cell(value: str, label: str) -> tuple[Decimal, str]:
@@ -151,6 +183,7 @@ def parse_delivery_html(html: str) -> DeliveryRates:  # noqa: C901
     table = _find_rate_r_delivery_table(soup)
     customer_charge: Decimal | None = None
     components: dict[str, DeliveryComponent] = {}
+    summary_amount: Decimal | None = None
     for row in table.find_all("tr"):
         cells = row.find_all("td")
         if len(cells) < 2:
@@ -164,6 +197,13 @@ def parse_delivery_html(html: str) -> DeliveryRates:  # noqa: C901
                 )
             customer_charge = amount
         elif unit == "USD/kWh":
+            if _is_summary_row(label):
+                if summary_amount is not None and summary_amount != amount:
+                    raise EversourceParseError(
+                        "Conflicting delivery summary/total row values"
+                    )
+                summary_amount = amount
+                continue
             key = _component_key(label)
             existing = components.get(key)
             if existing is not None and existing.rate != amount:
@@ -188,5 +228,10 @@ def parse_delivery_html(html: str) -> DeliveryRates:  # noqa: C901
     if not Decimal("0") < parsed.variable_rate < Decimal("1"):
         raise EversourceParseError(
             f"Delivery rate outside plausible range: {parsed.variable_rate}"
+        )
+    if summary_amount is not None and summary_amount != parsed.variable_rate:
+        raise EversourceParseError(
+            "Delivery summary/total conflicts with component sum: "
+            f"{summary_amount} != {parsed.variable_rate}"
         )
     return parsed

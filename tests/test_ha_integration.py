@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from decimal import Decimal
 from unittest.mock import AsyncMock, patch
 
 import pytest
@@ -201,3 +202,53 @@ async def test_coordinator_refreshes_when_only_retrieved_at_changes(
     assert coordinator.data.retrieved_at == second.retrieved_at
     assert notifications == [second.retrieved_at]
     assert second.retrieved_at - first.retrieved_at == timedelta(days=1)
+
+
+async def test_diagnostic_rider_survives_disappear_and_reappear(
+    hass: HomeAssistant, rates
+) -> None:
+    """A diagnostic rider stays available→unavailable→available without errors."""
+    from copy import replace
+
+    from custom_components.eversource_rates.models import (
+        DeliveryComponent,
+        DeliveryRates,
+    )
+    from custom_components.eversource_rates.sensor import EversourceComponentSensor
+
+    components = dict(rates.delivery.variable_components)
+    components["temporary_reliability_rider"] = DeliveryComponent(
+        "temporary_reliability_rider",
+        "Temporary Reliability Rider",
+        Decimal("0.001"),
+    )
+    rates_with_rider = replace(
+        rates,
+        delivery=DeliveryRates(rates.delivery.customer_charge, components),
+    )
+
+    client = AsyncMock()
+    client.async_get_rates = AsyncMock(return_value=rates_with_rider)
+    coordinator = EversourceRatesCoordinator(hass, client)
+    await coordinator.async_refresh()
+
+    sensor = EversourceComponentSensor(
+        coordinator,
+        "temporary_reliability_rider",
+        "Eversource Temporary Reliability Rider",
+    )
+    sensor.hass = hass
+    sensor.entity_id = "sensor.eversource_temporary_reliability_rider"
+
+    assert sensor.available is True
+    assert sensor.native_value == Decimal("0.001")
+
+    client.async_get_rates = AsyncMock(return_value=rates)
+    await coordinator.async_refresh()
+    assert sensor.available is False
+    assert sensor.native_value is None
+
+    client.async_get_rates = AsyncMock(return_value=rates_with_rider)
+    await coordinator.async_refresh()
+    assert sensor.available is True
+    assert sensor.native_value == Decimal("0.001")

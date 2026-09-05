@@ -157,11 +157,23 @@ class EversourceComponentSensor(EversourceSensor):
         )
 
     @property
-    def native_value(self) -> Decimal:
-        """Return this rider's variable USD/kWh rate."""
-        return self.coordinator.data.delivery.variable_components[
+    def available(self) -> bool:
+        """Stay registered but unavailable when the rider disappears mid-session."""
+        return (
+            super().available
+            and self.entity_description.key
+            in self.coordinator.data.delivery.variable_components
+        )
+
+    @property
+    def native_value(self) -> Decimal | None:
+        """Return this rider's variable USD/kWh rate when present."""
+        component = self.coordinator.data.delivery.variable_components.get(
             self.entity_description.key
-        ].rate
+        )
+        if component is None:
+            return None
+        return component.rate
 
 
 async def async_setup_entry(

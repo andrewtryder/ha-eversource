@@ -103,7 +103,13 @@ def validate_rates(rates: TariffRates) -> None:
 async def fetch_eversource_rates(**_: object) -> TariffRates:
     """Fetch without authentication using only Cookie: .SEGMENT=nh."""
     async with aiohttp.ClientSession() as session:
-        return _from_rates(await EversourceClient(session, "nh", "r").async_get_rates())
+        client = EversourceClient(
+            session,
+            territory="nh",
+            segment="nh",
+            rate_class="r",
+        )
+        return _from_rates(await client.async_get_rates())
 
 
 async def main() -> None:

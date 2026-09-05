@@ -1,0 +1,37 @@
+"""Behavior tests for the developer tariff-fetch utility."""
+
+from __future__ import annotations
+
+from unittest.mock import AsyncMock, MagicMock, patch
+
+import pytest
+
+from tools.fetch_eversource_rates import fetch_eversource_rates
+
+
+@pytest.mark.asyncio
+async def test_fetch_utility_constructs_keyword_only_client(rates) -> None:
+    """Prove the tool uses the current EversourceClient keyword API."""
+    session = MagicMock()
+    session_cm = MagicMock()
+    session_cm.__aenter__ = AsyncMock(return_value=session)
+    session_cm.__aexit__ = AsyncMock(return_value=None)
+
+    with (
+        patch(
+            "tools.fetch_eversource_rates.aiohttp.ClientSession",
+            return_value=session_cm,
+        ),
+        patch("tools.fetch_eversource_rates.EversourceClient") as client_cls,
+    ):
+        client_cls.return_value.async_get_rates = AsyncMock(return_value=rates)
+        result = await fetch_eversource_rates()
+
+    assert client_cls.call_args.args == (session,)
+    assert client_cls.call_args.kwargs == {
+        "territory": "nh",
+        "segment": "nh",
+        "rate_class": "r",
+    }
+    assert result.supply_rate == rates.supply.rate
+    assert result.total_variable_rate == rates.total_variable_rate
