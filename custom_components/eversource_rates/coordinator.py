@@ -17,13 +17,17 @@ class EversourceRatesCoordinator(DataUpdateCoordinator[EversourceRates]):
     """Poll tariffs while retaining coordinator data on a failed refresh."""
 
     def __init__(self, hass, client: EversourceClient) -> None:
-        """Initialize the periodic Home Assistant coordinator."""
+        """Initialize the periodic Home Assistant coordinator.
+
+        Leave the default ``always_update=True`` behavior. ``retrieved_at`` is a
+        visible provenance attribute, and a 12-hour poll produces negligible HA
+        state churn even when tariff values are unchanged.
+        """
         super().__init__(
             hass,
             _LOGGER,
             name=DOMAIN,
             update_interval=UPDATE_INTERVAL,
-            always_update=False,
         )
         self.client = client
 
