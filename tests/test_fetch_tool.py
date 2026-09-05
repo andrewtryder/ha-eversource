@@ -31,7 +31,6 @@ async def test_fetch_utility_constructs_keyword_only_client(rates) -> None:
     assert client_cls.call_args.args == (session,)
     assert client_cls.call_args.kwargs == {
         "territory": "nh",
-        "segment": "nh",
         "rate_class": "r",
     }
     assert result.supply_rate == rates.supply.rate

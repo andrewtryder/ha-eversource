@@ -15,11 +15,11 @@ It provides **price data only**. You still need a separate cumulative **kWh** co
 | Territory / rate | Status |
 | --- | --- |
 | New Hampshire — Residential Rate R | **Supported and maintainer-tested** |
-| Connecticut | Investigated, not yet supported |
+| Connecticut — Rate 1 (Residential) | **Supported** from public tariff data |
 | Eastern Massachusetts | Investigated, not yet supported |
 | Western Massachusetts | Investigated, not yet supported |
 
-**Electricity only.** Natural gas is not supported. The current integration also assumes **Eversource default service supply**; third-party supplier pricing and time-of-use tariffs are not yet supported.
+**Electricity only.** Natural gas is not supported. The current integration also assumes **Eversource default service supply**; third-party supplier pricing and time-of-use tariffs (including CT Rate 7) are not yet supported.
 
 ## What it does
 
@@ -36,7 +36,10 @@ Then go to **Settings → Devices & services → Add integration → Eversource 
 
 ### Finding your rate class
 
-Look at the detailed **Delivery** section of your Eversource electric bill, typically on page 2. The rate designation is usually shown near the delivery-charge breakdown. For the currently supported New Hampshire residential tariff, look for **Rate R** or **Rate R Residential Services**.
+Look at the detailed **Delivery** section of your Eversource electric bill, typically on page 2. The rate designation is usually shown near the delivery-charge breakdown.
+
+- New Hampshire residential: look for **Rate R** or **Rate R Residential Services**.
+- Connecticut residential: look for **Rate 1**.
 
 Your **rate class** is different from your electricity **supplier**. This integration currently uses Eversource default-service supply pricing.
 
@@ -58,7 +61,9 @@ Do not use only the supply or delivery sensor; the total-rate sensor combines bo
 
 ## Main entities
 
-| Entity | Purpose |
+New Hampshire Rate R keeps short entity IDs. Connecticut Rate 1 uses territory-prefixed IDs such as `sensor.eversource_ct_1_total_electricity_rate`.
+
+| Entity (NH Rate R) | Purpose |
 | --- | --- |
 | `sensor.eversource_total_electricity_rate` | Supply + variable delivery in USD/kWh; use this in the Energy dashboard |
 | `sensor.eversource_supply_rate` | Current Eversource default-service supply price |

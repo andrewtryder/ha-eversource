@@ -80,6 +80,33 @@ async def test_config_flow_two_step_nh_unchanged(hass: HomeAssistant, rates) -> 
     assert result["result"].unique_id == "eversource_rates_nh_r"
 
 
+async def test_config_flow_connecticut_rate_1(hass: HomeAssistant, rates) -> None:
+    """Connecticut Rate 1 is selectable and creates a prefixed unique id."""
+    result = await hass.config_entries.flow.async_init(
+        DOMAIN, context={"source": "user"}
+    )
+    result = await hass.config_entries.flow.async_configure(
+        result["flow_id"], {CONF_TERRITORY: "ct"}
+    )
+    assert result["type"] == FlowResultType.FORM
+    assert result["step_id"] == "rate_class"
+    rate_validator = next(iter(result["data_schema"].schema.values()))
+    assert set(rate_validator.container) == {"1"}
+
+    with patch(
+        "custom_components.eversource_rates.config_flow.EversourceClient.async_get_rates",
+        AsyncMock(return_value=rates),
+    ):
+        result = await hass.config_entries.flow.async_configure(
+            result["flow_id"], {CONF_RATE_CLASS: "1"}
+        )
+    assert result["type"] == FlowResultType.CREATE_ENTRY
+    assert result["data"] == {CONF_TERRITORY: "ct", CONF_RATE_CLASS: "1"}
+    assert result["result"].unique_id == "eversource_rates_ct_1"
+    assert "Connecticut" in result["title"]
+    assert "Rate 1" in result["title"]
+
+
 async def test_config_flow_rejects_unsupported_rate_for_territory(
     hass: HomeAssistant, monkeypatch: pytest.MonkeyPatch
 ) -> None:

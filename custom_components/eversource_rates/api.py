@@ -9,14 +9,15 @@ from decimal import Decimal
 
 import aiohttp
 
-from .const import DELIVERY_URL, REQUEST_TIMEOUT_SECONDS, SUPPLY_URL
+from .const import REQUEST_TIMEOUT_SECONDS
 from .models import EversourceRates
-from .parser import EversourceParseError, parse_delivery_html, parse_supply_html
+from .parsers import EversourceParseError, parse_tariff
+from .sources import TARIFF_SOURCES, TariffSource, get_tariff_source
 
 _LOGGER = logging.getLogger(__name__)
 
 # Logical territory + rate class pairs implemented by this client.
-SUPPORTED_TARIFFS = frozenset({("nh", "r")})
+SUPPORTED_TARIFFS = frozenset(TARIFF_SOURCES)
 
 
 class EversourceError(Exception):
@@ -43,25 +44,28 @@ class EversourceClient:
         session: aiohttp.ClientSession,
         *,
         territory: str,
-        segment: str,
         rate_class: str,
     ) -> None:
         """Initialize the client with Home Assistant's shared session.
 
-        ``territory`` is the integration's logical tariff identity.
-        ``segment`` is only the Sitefinity ``.SEGMENT`` cookie value used for HTTP.
+        ``territory`` and ``rate_class`` identify the logical tariff. Fetch URLs
+        and any optional Sitefinity ``.SEGMENT`` cookie come from ``TariffSource``.
         """
         self._session = session
         self._territory = territory
-        self._segment = segment
         self._rate_class = rate_class
+        self._source: TariffSource | None = get_tariff_source(territory, rate_class)
 
     async def _async_fetch(self, url: str) -> str:
+        headers: dict[str, str] = {}
+        assert self._source is not None
+        if self._source.segment is not None:
+            headers["Cookie"] = f".SEGMENT={self._source.segment}"
         try:
             timeout = aiohttp.ClientTimeout(total=REQUEST_TIMEOUT_SECONDS)
             async with self._session.get(
                 url,
-                headers={"Cookie": f".SEGMENT={self._segment}"},
+                headers=headers,
                 timeout=timeout,
                 allow_redirects=True,
             ) as response:
@@ -77,14 +81,20 @@ class EversourceClient:
 
     async def async_get_rates(self) -> EversourceRates:
         """Fetch supply and delivery concurrently and validate the parsed tariff."""
-        if (self._territory, self._rate_class) not in SUPPORTED_TARIFFS:
+        if self._source is None:
             raise EversourceUnsupportedTariffError("Unsupported Eversource tariff")
+        source = self._source
         supply_html, delivery_html = await asyncio.gather(
-            self._async_fetch(SUPPLY_URL), self._async_fetch(DELIVERY_URL)
+            self._async_fetch(source.supply_url),
+            self._async_fetch(source.delivery_url),
         )
         try:
-            supply = parse_supply_html(supply_html, self._rate_class)
-            delivery = parse_delivery_html(delivery_html)
+            supply, delivery = parse_tariff(
+                self._territory,
+                self._rate_class,
+                supply_html,
+                delivery_html,
+            )
         except EversourceParseError as err:
             raise EversourceTariffParseError(str(err)) from err
         rates = EversourceRates(
@@ -92,8 +102,8 @@ class EversourceClient:
             rate_class=self._rate_class,
             supply=supply,
             delivery=delivery,
-            source_supply_url=SUPPLY_URL,
-            source_delivery_url=DELIVERY_URL,
+            source_supply_url=source.supply_url,
+            source_delivery_url=source.delivery_url,
             retrieved_at=datetime.now(UTC),
         )
         if not Decimal("0") < rates.total_variable_rate < Decimal("2"):

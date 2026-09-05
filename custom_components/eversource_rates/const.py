@@ -31,8 +31,12 @@ class Territory:
 
 TERRITORIES = {
     "nh": Territory("nh", "New Hampshire", "nh", ("r",)),
+    "ct": Territory("ct", "Connecticut", "ct", ("1",)),
 }
-RATE_CLASS_NAMES = {"r": "Residential Rate R"}
+RATE_CLASS_NAMES = {
+    "r": "Residential Rate R",
+    "1": "Rate 1 - Residential",
+}
 
 
 def update_interval_options() -> dict[int, str]:
