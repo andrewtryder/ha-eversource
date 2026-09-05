@@ -71,7 +71,7 @@ class EversourceSensor(CoordinatorEntity[EversourceRatesCoordinator], SensorEnti
                 description.key,
             )
         )
-        self._attr_entity_id = f"sensor.eversource_{description.key}"
+        self._attr_suggested_object_id = f"eversource_{description.key}"
 
     @property
     def device_info(self) -> DeviceInfo:

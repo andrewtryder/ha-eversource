@@ -94,6 +94,5 @@ async def test_coordinator_converts_client_error_to_update_failed(
     client = AsyncMock()
     client.async_get_rates.side_effect = EversourceConnectionError("offline")
     coordinator = EversourceRatesCoordinator(hass, client)
-    with pytest.raises(Exception, match="offline"):
-        await coordinator.async_refresh()
+    await coordinator.async_refresh()
     assert coordinator.last_update_success is False
