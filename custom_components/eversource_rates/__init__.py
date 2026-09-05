@@ -42,7 +42,6 @@ else:
         client = EversourceClient(
             async_get_clientsession(hass),
             territory=territory.key,
-            segment=territory.segment,
             rate_class=entry.data[CONF_RATE_CLASS],
         )
         coordinator = EversourceRatesCoordinator(

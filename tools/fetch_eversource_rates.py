@@ -109,7 +109,6 @@ async def fetch_eversource_rates(**_: object) -> TariffRates:
         client = EversourceClient(
             session,
             territory="nh",
-            segment="nh",
             rate_class="r",
         )
         return _from_rates(await client.async_get_rates())
