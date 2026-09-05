@@ -6,3 +6,6 @@ __pycache__/
 .coverage
 coverage.xml
 .pre-commit-cache/
+
+# Local secrets / env (never commit)
+.env
