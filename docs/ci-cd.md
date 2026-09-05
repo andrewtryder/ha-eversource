@@ -4,9 +4,9 @@
 
 The `Validate` workflow runs on pull requests, pushes to `main`, a daily schedule, and manual dispatch. It covers HACS, Hassfest, Ruff, and pytest (Python 3.14, ≥96% coverage). Those checks are the PR correctness gates.
 
-## Live Eversource smoke
+## Live Eversource checks
 
-`Live Eversource smoke` fetches the public New Hampshire Rate R tariff pages on a schedule (and via `workflow_dispatch`). It is an **external dependency health check**, not a branch-protection or PR merge requirement. Eversource outages must not block ordinary code merges.
+There is no scheduled CI job against live Eversource pages. Public tariff fetch/parse health is verified during canary testing (for example `python tools/fetch_eversource_rates.py`) so Actions is not flaky when Eversource changes audience cookies or page shape.
 
 ## Release Please authentication
 
@@ -32,7 +32,13 @@ Add repository secrets (no real values in git):
 | `RELEASE_PLEASE_APP_ID` | Numeric GitHub App ID |
 | `RELEASE_PLEASE_PRIVATE_KEY` | App private key PEM |
 
-The Release Please workflow calls `actions/create-github-app-token` when `RELEASE_PLEASE_APP_ID` is set, then passes that installation token to Release Please.
+Also set repository variable:
+
+| Variable | Value |
+| --- | --- |
+| `RELEASE_PLEASE_USE_APP` | `true` |
+
+The App token step only runs when that variable is `true`, so missing App secrets cannot break the workflow. Until then, Release Please uses `RELEASE_PLEASE_TOKEN`.
 
 ### Fallback: fine-grained PAT
 
@@ -51,4 +57,4 @@ Avoid classic PATs unless necessary. Never commit token values or print them in 
 
 ### Default behavior without setup
 
-Until App or PAT secrets are configured, the workflow falls back to `secrets.GITHUB_TOKEN`. Releases still work, but Release Please PRs may require manual workflow approval or a Semantic PR title re-trigger.
+Until `RELEASE_PLEASE_USE_APP=true` (with App secrets) or `RELEASE_PLEASE_TOKEN` is configured, Release Please cannot authenticate. Configure the PAT first; enable the App later if desired.
