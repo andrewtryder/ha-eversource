@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.2.0](https://github.com/andrewtryder/ha-eversource/compare/v0.1.4...v0.2.0) (2026-09-05)
+
+
+### Features
+
+* add configurable tariff update interval ([#31](https://github.com/andrewtryder/ha-eversource/issues/31)) ([786e213](https://github.com/andrewtryder/ha-eversource/commit/786e213122fb55b3cb8f77d22ee180d9ea8e1cd6))
+
 ## [0.1.4](https://github.com/andrewtryder/ha-eversource/compare/v0.1.3...v0.1.4) (2026-09-05)
 
 
