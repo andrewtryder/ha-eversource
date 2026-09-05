@@ -78,3 +78,24 @@ def test_supply_rejects_malformed_effective_date() -> None:
     )
     with pytest.raises(EversourceParseError, match="Malformed supply date"):
         parse_supply_html(html)
+
+
+def test_supply_rate_class_r_still_parses() -> None:
+    """Explicit Rate R remains the only successful supply parse path."""
+    html = (
+        "<h2>Current Supply Rates</h2><p>Rate R will be $0.14009 per kWh "
+        "August 1, 2026 through January 31, 2027.</p>"
+    )
+    parsed = parse_supply_html(html, rate_class="r")
+    assert parsed.rate_class == "r"
+    assert parsed.rate == Decimal("0.14009")
+
+
+def test_supply_rejects_unsupported_rate_class_label() -> None:
+    """Refuse to return Rate R numbers labeled as an unsupported rate class."""
+    html = (
+        "<h2>Current Supply Rates</h2><p>Rate R will be $0.14009 per kWh "
+        "August 1, 2026 through January 31, 2027.</p>"
+    )
+    with pytest.raises(EversourceParseError, match="Unsupported supply rate class"):
+        parse_supply_html(html, rate_class="g")
