@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import voluptuous as vol
 from homeassistant import config_entries
+from homeassistant.core import callback
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 
 from .api import (
@@ -15,9 +16,13 @@ from .api import (
 from .const import (
     CONF_RATE_CLASS,
     CONF_TERRITORY,
+    CONF_UPDATE_INTERVAL_HOURS,
+    DEFAULT_UPDATE_INTERVAL_HOURS,
     DOMAIN,
     RATE_CLASS_NAMES,
     TERRITORIES,
+    update_interval_hours_from_options,
+    update_interval_options,
 )
 
 
@@ -42,6 +47,14 @@ class EversourceRatesConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     def __init__(self) -> None:
         """Initialize transient multi-step selection state."""
         self._territory: str | None = None
+
+    @staticmethod
+    @callback
+    def async_get_options_flow(
+        config_entry: config_entries.ConfigEntry,
+    ) -> config_entries.OptionsFlow:
+        """Return the options flow (reload-on-save; no update listener)."""
+        return EversourceRatesOptionsFlow()
 
     async def async_step_user(self, user_input=None):
         """Select the service territory first."""
@@ -120,4 +133,30 @@ class EversourceRatesConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 }
             ),
             errors=errors,
+        )
+
+
+class EversourceRatesOptionsFlow(config_entries.OptionsFlowWithReload):
+    """Configure tariff polling interval; saving reloads the config entry."""
+
+    async def async_step_init(self, user_input=None):
+        """Manage the tariff update interval option."""
+        if user_input is not None:
+            hours = int(user_input[CONF_UPDATE_INTERVAL_HOURS])
+            return self.async_create_entry(
+                title="",
+                data={CONF_UPDATE_INTERVAL_HOURS: hours},
+            )
+
+        current = update_interval_hours_from_options(dict(self.config_entry.options))
+        return self.async_show_form(
+            step_id="init",
+            data_schema=vol.Schema(
+                {
+                    vol.Required(
+                        CONF_UPDATE_INTERVAL_HOURS,
+                        default=current or DEFAULT_UPDATE_INTERVAL_HOURS,
+                    ): vol.In(update_interval_options()),
+                }
+            ),
         )

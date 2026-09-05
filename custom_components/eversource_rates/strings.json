@@ -25,5 +25,16 @@
       "already_configured": "This Eversource tariff is already configured.",
       "unsupported_tariff": "This tariff is not supported."
     }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Eversource Rates options",
+        "description": "Choose how often public Eversource tariff pages are checked.",
+        "data": {
+          "update_interval_hours": "Tariff update interval"
+        }
+      }
+    }
   }
 }

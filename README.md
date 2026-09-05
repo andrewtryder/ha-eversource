@@ -23,7 +23,7 @@ It provides **price data only**. You still need a separate cumulative **kWh** co
 
 ## What it does
 
-- Retrieves Eversource supply and delivery rates from public tariff pages about every 12 hours.
+- Checks public Eversource tariff pages daily by default; the interval can be changed from the integration's Configure menu.
 - Requires no Eversource login, account number, API key, or private account data.
 - Calculates the all-in **variable** electricity rate: supply + per-kWh delivery charges and credits.
 - Keeps the fixed monthly customer charge separate so it is not incorrectly applied as a per-kWh price.

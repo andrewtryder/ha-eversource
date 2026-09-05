@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from datetime import timedelta
 from decimal import Decimal
 from unittest.mock import AsyncMock, patch
 
@@ -19,10 +20,19 @@ from custom_components.eversource_rates.api import (
 from custom_components.eversource_rates.const import (
     CONF_RATE_CLASS,
     CONF_TERRITORY,
+    DEFAULT_UPDATE_INTERVAL_HOURS,
     DOMAIN,
     Territory,
 )
 from custom_components.eversource_rates.coordinator import EversourceRatesCoordinator
+
+
+def _coordinator(hass, client) -> EversourceRatesCoordinator:
+    return EversourceRatesCoordinator(
+        hass,
+        client,
+        update_interval=timedelta(hours=DEFAULT_UPDATE_INTERVAL_HOURS),
+    )
 
 
 def _assert_rate_sensor_metadata(hass: HomeAssistant, entity_id: str) -> None:
@@ -164,7 +174,7 @@ async def test_coordinator_converts_client_error_to_update_failed(
     """Preserve normal coordinator failure semantics for a remote outage."""
     client = AsyncMock()
     client.async_get_rates.side_effect = EversourceConnectionError("offline")
-    coordinator = EversourceRatesCoordinator(hass, client)
+    coordinator = _coordinator(hass, client)
     await coordinator.async_refresh()
     assert coordinator.last_update_success is False
 
@@ -183,7 +193,7 @@ async def test_coordinator_refreshes_when_only_retrieved_at_changes(
 
     client = AsyncMock()
     client.async_get_rates.side_effect = [first, second]
-    coordinator = EversourceRatesCoordinator(hass, client)
+    coordinator = _coordinator(hass, client)
     await coordinator.async_refresh()
     assert coordinator.last_update_success is True
     assert coordinator.data.retrieved_at == first.retrieved_at
@@ -229,7 +239,7 @@ async def test_diagnostic_rider_survives_disappear_and_reappear(
 
     client = AsyncMock()
     client.async_get_rates = AsyncMock(return_value=rates_with_rider)
-    coordinator = EversourceRatesCoordinator(hass, client)
+    coordinator = _coordinator(hass, client)
     await coordinator.async_refresh()
 
     sensor = EversourceComponentSensor(
