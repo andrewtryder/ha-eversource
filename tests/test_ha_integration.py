@@ -102,7 +102,11 @@ async def test_setup_uses_territory_sitefinity_segment(
         client.return_value.async_get_rates = AsyncMock(return_value=rates)
         assert await hass.config_entries.async_setup(entry.entry_id)
         await hass.async_block_till_done()
-    assert client.call_args.args[1:] == ("sitefinity-nh", "r")
+    assert client.call_args.kwargs == {
+        "territory": "nh",
+        "segment": "sitefinity-nh",
+        "rate_class": "r",
+    }
 
 
 @pytest.mark.parametrize(

@@ -37,8 +37,9 @@ class EversourceRatesConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             try:
                 await EversourceClient(
                     async_get_clientsession(self.hass),
-                    TERRITORIES[territory].segment,
-                    rate_class,
+                    territory=TERRITORIES[territory].key,
+                    segment=TERRITORIES[territory].segment,
+                    rate_class=rate_class,
                 ).async_get_rates()
             except EversourceConnectionError:
                 errors["base"] = "cannot_connect"
