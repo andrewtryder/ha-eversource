@@ -3,16 +3,16 @@
     "step": {
       "user": {
         "title": "Eversource Rates",
-        "description": "Select the Eversource service territory for this tariff.",
+        "description": "Configure public Eversource electricity tariff rates for your service territory. Natural gas rates are not supported.",
         "data": {
           "territory": "Service territory"
         }
       },
       "rate_class": {
-        "title": "Rate class",
-        "description": "Select a residential rate class available in the chosen territory.",
+        "title": "Electric rate class",
+        "description": "Select the electric rate class shown on your Eversource bill. It is typically listed in the detailed Delivery section.",
         "data": {
-          "rate_class": "Rate class"
+          "rate_class": "Electric rate class"
         }
       }
     },
