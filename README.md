@@ -69,7 +69,7 @@ Individual delivery components are available as disabled-by-default diagnostic e
 
 ## Notes
 
-Rates are parsed from public Eversource pages using exact decimal arithmetic. If a public page becomes unavailable or changes in an unsafe way, the integration fails closed rather than publishing a fabricated price. A scheduled live smoke test also checks the public New Hampshire tariff source for site changes.
+Rates are parsed from public Eversource pages using exact decimal arithmetic. If a public page becomes unavailable or changes in an unsafe way, the integration fails closed rather than publishing a fabricated price. Developers can use `tools/fetch_eversource_rates.py` for a manual live fetch/parse check against the public New Hampshire tariff pages.
 
 Home Assistant applies the current price to energy recorded after rate updates; this integration does not retroactively recalculate historical Energy dashboard costs.
 
