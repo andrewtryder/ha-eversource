@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.1.1](https://github.com/andrewtryder/ha-eversource/compare/v0.1.0...v0.1.1) (2026-09-05)
+
+
+### Bug Fixes
+
+* prepare integration for additional territories ([d889b0f](https://github.com/andrewtryder/ha-eversource/commit/d889b0f654c005ce2d6ceedbd5ae9fbcac50aee6))
+* use concrete integration runtime types ([#7](https://github.com/andrewtryder/ha-eversource/issues/7)) ([f82e77f](https://github.com/andrewtryder/ha-eversource/commit/f82e77fc800cca01da973412603479d6d6ae58d9))
+
 ## 0.1.0 (2026-09-05)
 
 
