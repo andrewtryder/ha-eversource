@@ -168,11 +168,37 @@ def test_timeout_fails_safely() -> None:
         asyncio.run(_client(TimeoutSession()).async_get_rates())
 
 
+def test_ema_fetch_uses_suffixed_urls_without_cookie() -> None:
+    session = FakeSession(
+        [
+            FakeResponse(200, (FIXTURES / "sanitized_ema_supply.html").read_text()),
+            FakeResponse(200, (FIXTURES / "sanitized_ema_delivery.html").read_text()),
+        ]
+    )
+    rates = asyncio.run(
+        _client(
+            session,
+            territory="ema",
+            rate_class="r1",
+            supply_plan="fixed",
+            service_area="main",
+        ).async_get_rates()
+    )
+    assert rates.territory == "ema"
+    assert rates.service_area == "main"
+    assert rates.source_supply_url == f"{SUPPLY_URL}/ema"
+    assert rates.supply.rate == Decimal("0.17323")
+    assert rates.delivery.variable_components["energy_efficiency_charge"].rate == (
+        Decimal("0.02292")
+    )
+    assert all(call[1]["headers"] == {} for call in session.calls)
+
+
 def test_unsupported_tariff_fails_before_network_access() -> None:
     """Reject a non-production tariff without attempting an HTTP request."""
     with pytest.raises(EversourceUnsupportedTariffError):
         asyncio.run(
-            _client(FakeSession([]), territory="ema", rate_class="r1").async_get_rates()
+            _client(FakeSession([]), territory="ema", rate_class="r2").async_get_rates()
         )
 
 

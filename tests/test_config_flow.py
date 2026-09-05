@@ -108,6 +108,49 @@ async def test_config_flow_connecticut_rate_1(hass: HomeAssistant, rates) -> Non
     assert "Rate 1" in result["title"]
 
 
+async def test_config_flow_ema_requires_supply_plan_and_service_area(
+    hass: HomeAssistant, rates
+) -> None:
+    """Eastern Massachusetts R1 asks for supply plan then service area."""
+    from custom_components.eversource_rates.const import (
+        CONF_SERVICE_AREA,
+        CONF_SUPPLY_PLAN,
+    )
+
+    result = await hass.config_entries.flow.async_init(
+        DOMAIN, context={"source": "user"}
+    )
+    result = await hass.config_entries.flow.async_configure(
+        result["flow_id"], {CONF_TERRITORY: "ema"}
+    )
+    result = await hass.config_entries.flow.async_configure(
+        result["flow_id"], {CONF_RATE_CLASS: "r1"}
+    )
+    assert result["step_id"] == "supply_plan"
+    result = await hass.config_entries.flow.async_configure(
+        result["flow_id"], {CONF_SUPPLY_PLAN: "fixed"}
+    )
+    assert result["type"] == FlowResultType.FORM
+    assert result["step_id"] == "service_area"
+    with patch(
+        "custom_components.eversource_rates.config_flow.EversourceClient.async_get_rates",
+        AsyncMock(return_value=rates),
+    ):
+        result = await hass.config_entries.flow.async_configure(
+            result["flow_id"], {CONF_SERVICE_AREA: "cape"}
+        )
+    assert result["type"] == FlowResultType.CREATE_ENTRY
+    assert result["data"] == {
+        CONF_TERRITORY: "ema",
+        CONF_RATE_CLASS: "r1",
+        CONF_SUPPLY_PLAN: "fixed",
+        CONF_SERVICE_AREA: "cape",
+    }
+    assert result["result"].unique_id == "eversource_rates_ema_r1_fixed_cape"
+    assert "Eastern Massachusetts" in result["title"]
+    assert "Cape" in result["title"]
+
+
 async def test_config_flow_wma_requires_supply_plan(hass: HomeAssistant, rates) -> None:
     """Western Massachusetts R1 asks for Fixed vs Monthly Variable Basic Service."""
     from custom_components.eversource_rates.const import CONF_SUPPLY_PLAN

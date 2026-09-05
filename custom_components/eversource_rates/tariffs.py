@@ -44,6 +44,13 @@ TARIFF_DEFINITIONS: dict[tuple[str, str], TariffDefinition] = {
         "R1 - Residential Non-Heating",
         supply_plans=("fixed", "monthly_variable"),
     ),
+    ("ema", "r1"): TariffDefinition(
+        "ema",
+        "r1",
+        "R1 - Residential Non-Heating",
+        supply_plans=("fixed", "monthly_variable"),
+        service_areas=("main", "cape"),
+    ),
 }
 
 SUPPLY_PLAN_NAMES = {

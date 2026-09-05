@@ -35,6 +35,7 @@ TERRITORIES = {
     "nh": Territory("nh", "New Hampshire", "nh", ("r",)),
     "ct": Territory("ct", "Connecticut", "ct", ("1",)),
     "wma": Territory("wma", "Western Massachusetts", "wma", ("r1",)),
+    "ema": Territory("ema", "Eastern Massachusetts", "ema", ("r1",)),
 }
 RATE_CLASS_NAMES = {
     "r": "Residential Rate R",

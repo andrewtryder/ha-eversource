@@ -52,6 +52,19 @@ def test_parse_wma_delivery_non_heating_only() -> None:
     assert delivery.variable_rate == Decimal("0.18635")
 
 
+def test_parse_tariff_dispatch_ema_cape() -> None:
+    selection = TariffSelection("ema", "r1", supply_plan="fixed", service_area="cape")
+    supply, delivery = parse_tariff(
+        selection,
+        (FIXTURES / "sanitized_ema_supply.html").read_text(),
+        (FIXTURES / "sanitized_ema_delivery.html").read_text(),
+    )
+    assert supply.rate == Decimal("0.17323")
+    assert delivery.variable_components["energy_efficiency_charge"].rate == Decimal(
+        "0.03738"
+    )
+
+
 def test_parse_tariff_dispatch_wma() -> None:
     selection = TariffSelection("wma", "r1", supply_plan="fixed")
     supply, delivery = parse_tariff(

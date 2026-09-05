@@ -45,3 +45,10 @@ def test_wma_definition_requires_supply_plans() -> None:
     assert definition is not None
     assert definition.supply_plans == ("fixed", "monthly_variable")
     assert definition.service_areas == ()
+
+
+def test_ema_definition_requires_supply_plan_and_service_area() -> None:
+    definition = get_tariff_definition("ema", "r1")
+    assert definition is not None
+    assert definition.supply_plans == ("fixed", "monthly_variable")
+    assert definition.service_areas == ("main", "cape")
