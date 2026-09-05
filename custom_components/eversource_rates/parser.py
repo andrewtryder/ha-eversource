@@ -22,6 +22,13 @@ _SUPPLY_PATTERN = re.compile(
     re.IGNORECASE,
 )
 _NUMBER = re.compile(r"([+-]?\d+(?:\.\d+)?)")
+_MINUS_TRANSLATION = str.maketrans(
+    {
+        "\u2212": "-",  # Unicode minus
+        "\u2013": "-",  # en dash used as numeric sign
+        "\u2014": "-",  # em dash used as numeric sign
+    }
+)
 _KNOWN_COMPONENTS = {
     "distribution charge": "distribution_charge",
     "regulatory reconciliation": "regulatory_reconciliation_adjustment",
@@ -30,6 +37,7 @@ _KNOWN_COMPONENTS = {
     "stranded cost recovery": "stranded_cost_recovery_charge",
     "system benefits": "system_benefits_charge",
 }
+_REQUIRED_COMPONENTS = frozenset(_KNOWN_COMPONENTS.values())
 
 
 def _decimal(value: str, context: str) -> Decimal:
@@ -84,7 +92,10 @@ def _component_key(label: str) -> str:
 
 
 def _parse_cell(value: str, label: str) -> tuple[Decimal, str]:
-    normalized = " ".join(value.replace("¢", " cents ").split())
+    # Normalize typographic minus signs only inside the numeric cell text.
+    normalized = " ".join(
+        value.translate(_MINUS_TRANSLATION).replace("¢", " cents ").split()
+    )
     number = _NUMBER.search(normalized.replace(",", ""))
     if number is None:
         raise EversourceParseError(f"Missing numeric rate for {label}")
@@ -100,24 +111,44 @@ def _parse_cell(value: str, label: str) -> tuple[Decimal, str]:
     raise EversourceParseError(f"Unsupported or malformed unit for {label}: {value!r}")
 
 
-def parse_delivery_html(html: str) -> DeliveryRates:  # noqa: C901
-    """Extract the Rate R table by headers and classify every per-kWh row."""
-    soup = BeautifulSoup(html, "html.parser")
-    table = next(
+def _is_delivery_candidate(table: Tag) -> bool:
+    headers = {
+        " ".join(th.get_text(" ", strip=True).lower().split())
+        for th in table.find_all("th")
+    }
+    return {"delivery component", "current rate"}.issubset(headers)
+
+
+def _find_rate_r_delivery_table(soup: BeautifulSoup) -> Tag:
+    """Locate the Rate R delivery table by heading proximity, not table ordinal."""
+    heading = next(
         (
-            table
-            for table in soup.find_all("table")
-            if {"delivery component", "current rate"}.issubset(
-                {
-                    " ".join(th.get_text(" ", strip=True).lower().split())
-                    for th in table.find_all("th")
-                }
-            )
+            h
+            for h in soup.find_all(["h1", "h2", "h3"])
+            if "current rate r delivery" in h.get_text(" ", strip=True).lower()
         ),
         None,
     )
-    if table is None:
-        raise EversourceParseError("Could not locate Rate R delivery table")
+    if heading is not None:
+        for table in heading.find_all_next("table"):
+            if _is_delivery_candidate(table):
+                return table
+        raise EversourceParseError(
+            "Could not locate Rate R delivery table near Current Rate R Delivery Rates"
+        )
+
+    candidates = [
+        table for table in soup.find_all("table") if _is_delivery_candidate(table)
+    ]
+    if len(candidates) == 1:
+        return candidates[0]
+    raise EversourceParseError("Could not locate Rate R delivery table")
+
+
+def parse_delivery_html(html: str) -> DeliveryRates:  # noqa: C901
+    """Extract the Rate R table by headers and classify every per-kWh row."""
+    soup = BeautifulSoup(html, "html.parser")
+    table = _find_rate_r_delivery_table(soup)
     customer_charge: Decimal | None = None
     components: dict[str, DeliveryComponent] = {}
     for row in table.find_all("tr"):
@@ -134,6 +165,11 @@ def parse_delivery_html(html: str) -> DeliveryRates:  # noqa: C901
             customer_charge = amount
         elif unit == "USD/kWh":
             key = _component_key(label)
+            existing = components.get(key)
+            if existing is not None and existing.rate != amount:
+                raise EversourceParseError(
+                    f"Conflicting values for delivery component {key}"
+                )
             components[key] = DeliveryComponent(key, label, amount)
     if customer_charge is None:
         raise EversourceParseError("Missing Customer Charge in delivery table")
@@ -141,9 +177,10 @@ def parse_delivery_html(html: str) -> DeliveryRates:  # noqa: C901
         raise EversourceParseError(
             f"Customer charge outside plausible range: {customer_charge}"
         )
-    required = set(_KNOWN_COMPONENTS.values())
-    missing = required - components.keys()
+    missing = _REQUIRED_COMPONENTS - components.keys()
     if missing:
+        # Fail closed: without evidence that NH Rate R riders can disappear
+        # legitimately, a missing historical component is treated as truncated.
         raise EversourceParseError(
             f"Missing required delivery components: {sorted(missing)}"
         )
