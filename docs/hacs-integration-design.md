@@ -134,4 +134,4 @@ Internal models already carry logical `territory` separately from Sitefinity `se
 
 Release Please owns `manifest.json` version, `CHANGELOG.md`, and GitHub tags/releases. Do not manually bump versions.
 
-See [ci-cd.md](ci-cd.md) for validation gates, the live Eversource smoke workflow, and Release Please token setup.
+See `.github/workflows/` for validation and release automation. Additional operator notes live in `docs/ci-cd.md` when that document is present on the branch.
