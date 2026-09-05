@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.3](https://github.com/andrewtryder/ha-eversource/compare/v0.1.2...v0.1.3) (2026-09-05)
+
+
+### Bug Fixes
+
+* harden tariff tooling and rider lifecycle ([#18](https://github.com/andrewtryder/ha-eversource/issues/18)) ([348c2b9](https://github.com/andrewtryder/ha-eversource/commit/348c2b95e739c35a0a915bb1cbe11215b9f2379a))
+
 ## [0.1.2](https://github.com/andrewtryder/ha-eversource/compare/v0.1.1...v0.1.2) (2026-09-05)
 
 
