@@ -30,6 +30,11 @@ TARIFF_SOURCES: dict[tuple[str, str], TariffSource] = {
         f"{DELIVERY_URL}/wma",
         segment=None,
     ),
+    ("ema", "r1"): TariffSource(
+        f"{SUPPLY_URL}/ema",
+        f"{DELIVERY_URL}/ema",
+        segment=None,
+    ),
 }
 
 

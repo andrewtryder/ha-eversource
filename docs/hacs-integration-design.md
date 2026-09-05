@@ -126,7 +126,7 @@ This integration provides **price only**. A separate cumulative **kWh** consumpt
 
 ## Future territory architecture
 
-Internal models already carry logical `territory` separately from Sitefinity `segment`. Production `TERRITORIES` currently lists New Hampshire Rate R and Connecticut Rate 1. EMA/WMA identifiers and bill shapes are documented in the investigation note linked above; they must not be advertised in selectors until parsers and tests land.
+Internal models already carry logical `territory` separately from Sitefinity `segment`. Production `TERRITORIES` currently lists New Hampshire Rate R, Connecticut Rate 1, and Massachusetts R1 (WMA/EMA).
 
 ---
 
