@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.3.1](https://github.com/andrewtryder/ha-eversource/compare/v0.3.0...v0.3.1) (2026-09-12)
+
+
+### Bug Fixes
+
+* evaluate tariff effective dates in eastern time and update documentation ([#37](https://github.com/andrewtryder/ha-eversource/issues/37)) ([e0c84cd](https://github.com/andrewtryder/ha-eversource/commit/e0c84cd1ddb7139a1328577e368f797f25e5d85e))
+
 ## [0.3.0](https://github.com/andrewtryder/ha-eversource/compare/v0.2.0...v0.3.0) (2026-09-05)
 
 
