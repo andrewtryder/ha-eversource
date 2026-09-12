@@ -94,7 +94,14 @@ class EversourceClient:
                     raise EversourceConnectionError(
                         f"HTTP {response.status} retrieving tariff page"
                     )
-                return await response.text()
+                text = await response.text()
+                _LOGGER.debug(
+                    "Retrieved tariff page from %s: status=%d, bytes=%d",
+                    url,
+                    response.status,
+                    len(text.encode("utf-8")),
+                )
+                return text
         except TimeoutError as err:
             raise EversourceConnectionError("Timed out retrieving tariff page") from err
         except aiohttp.ClientError as err:
@@ -106,15 +113,22 @@ class EversourceClient:
             raise EversourceUnsupportedTariffError("Unsupported Eversource tariff")
         source = self._source
         selection = self._selection
+        _LOGGER.debug(
+            "Refreshing tariff for %s/%s",
+            selection.territory,
+            selection.rate_class,
+        )
         supply_html, delivery_html = await asyncio.gather(
             self._async_fetch(source.supply_url),
             self._async_fetch(source.delivery_url),
         )
+        as_of = datetime.now(source.time_zone).date()
         try:
             supply, delivery = parse_tariff(
                 selection,
                 supply_html,
                 delivery_html,
+                today=as_of,
             )
         except EversourceParseError as err:
             raise EversourceTariffParseError(str(err)) from err
@@ -134,9 +148,12 @@ class EversourceClient:
                 "Total variable rate outside plausible range"
             )
         _LOGGER.debug(
-            "Parsed Eversource %s %s tariff with %d delivery components",
+            "Parsed Eversource %s %s tariff with %d delivery components: "
+            "supply=%s, effective=%s",
             selection.territory,
             selection.rate_class,
             len(delivery.variable_components),
+            supply.rate,
+            supply.effective_date.isoformat() if supply.effective_date else "n/a",
         )
         return rates

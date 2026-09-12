@@ -18,11 +18,14 @@ def test_package_allows_api_import_when_homeassistant_missing() -> None:
             raise ModuleNotFoundError(name, name=name.split(".", 1)[0])
         return real_import(name, globals, locals, fromlist, level)
 
-    for key in list(sys.modules):
-        if key == "homeassistant" or key.startswith(
-            ("homeassistant.", "custom_components.eversource_rates")
-        ):
-            del sys.modules[key]
+    saved_modules = {
+        key: sys.modules[key]
+        for key in list(sys.modules)
+        if key == "homeassistant"
+        or key.startswith(("homeassistant.", "custom_components.eversource_rates"))
+    }
+    for key in saved_modules:
+        del sys.modules[key]
 
     builtins.__import__ = guarded
     try:
@@ -35,7 +38,7 @@ def test_package_allows_api_import_when_homeassistant_missing() -> None:
         for key in list(sys.modules):
             if key.startswith("custom_components.eversource_rates"):
                 del sys.modules[key]
-        importlib.import_module("custom_components.eversource_rates")
+        sys.modules.update(saved_modules)
 
 
 def test_package_init_reraises_unrelated_module_not_found() -> None:
@@ -47,9 +50,13 @@ def test_package_init_reraises_unrelated_module_not_found() -> None:
             raise ModuleNotFoundError("some_unrelated_dep", name="some_unrelated_dep")
         return real_import(name, globals, locals, fromlist, level)
 
-    for key in list(sys.modules):
-        if key.startswith("custom_components.eversource_rates"):
-            del sys.modules[key]
+    saved_modules = {
+        key: sys.modules[key]
+        for key in list(sys.modules)
+        if key.startswith("custom_components.eversource_rates")
+    }
+    for key in saved_modules:
+        del sys.modules[key]
 
     builtins.__import__ = guarded
     try:
@@ -60,4 +67,4 @@ def test_package_init_reraises_unrelated_module_not_found() -> None:
         for key in list(sys.modules):
             if key.startswith("custom_components.eversource_rates"):
                 del sys.modules[key]
-        importlib.import_module("custom_components.eversource_rates")
+        sys.modules.update(saved_modules)

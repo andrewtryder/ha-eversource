@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from collections.abc import Callable
+from datetime import date
 
 from ..models import DeliveryRates, SupplyRate
 from ..tariffs import TariffSelection
@@ -18,6 +19,8 @@ __all__ = [
 
 def get_tariff_parser(
     selection: TariffSelection,
+    *,
+    today: date | None = None,
 ) -> tuple[
     Callable[[str], SupplyRate],
     Callable[[str], DeliveryRates],
@@ -33,13 +36,13 @@ def get_tariff_parser(
         case ("ct", "1"):
 
             def parse_ct_supply(html: str) -> SupplyRate:
-                return ct.parse_supply_html(html, selection.rate_class)
+                return ct.parse_supply_html(html, selection.rate_class, today=today)
 
             return parse_ct_supply, ct.parse_delivery_html
         case ("wma", "r1") | ("ema", "r1"):
 
             def parse_ma_supply(html: str) -> SupplyRate:
-                return ma.parse_supply_html(html, selection)
+                return ma.parse_supply_html(html, selection, today=today)
 
             def parse_ma_delivery(html: str) -> DeliveryRates:
                 return ma.parse_delivery_html(html, selection)
@@ -55,7 +58,9 @@ def parse_tariff(
     selection: TariffSelection,
     supply_html: str,
     delivery_html: str,
+    *,
+    today: date | None = None,
 ) -> tuple[SupplyRate, DeliveryRates]:
     """Parse supply and delivery HTML for one logical tariff identity."""
-    parse_supply, parse_delivery = get_tariff_parser(selection)
+    parse_supply, parse_delivery = get_tariff_parser(selection, today=today)
     return parse_supply(supply_html), parse_delivery(delivery_html)
