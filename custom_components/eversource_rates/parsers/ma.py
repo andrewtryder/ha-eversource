@@ -4,11 +4,12 @@ from __future__ import annotations
 
 import calendar
 import re
-from datetime import date
+from datetime import date, datetime
 from decimal import Decimal
 
 from bs4 import BeautifulSoup, Tag
 
+from ..const import EVERSOURCE_TIME_ZONE
 from ..models import DeliveryComponent, DeliveryRates, SupplyRate
 from ..tariffs import TariffSelection
 from .common import (
@@ -164,7 +165,7 @@ def parse_supply_html(
         raise EversourceParseError(
             f"Unsupported MA supply plan: {selection.supply_plan!r}"
         )
-    as_of = today or date.today()
+    as_of = today or datetime.now(EVERSOURCE_TIME_ZONE).date()
     if selection.supply_plan == "fixed":
         return _parse_fixed_supply(html, selection.rate_class, today=as_of)
     return _parse_monthly_variable_supply(html, selection.rate_class, today=as_of)

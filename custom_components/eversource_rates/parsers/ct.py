@@ -3,11 +3,12 @@
 from __future__ import annotations
 
 import re
-from datetime import date
+from datetime import date, datetime
 from decimal import Decimal
 
 from bs4 import BeautifulSoup, Tag
 
+from ..const import EVERSOURCE_TIME_ZONE
 from ..models import DeliveryComponent, DeliveryRates, SupplyRate
 from .common import (
     EversourceParseError,
@@ -145,7 +146,7 @@ def parse_supply_html(
         raise EversourceParseError(
             f"Unsupported supply rate class for CT Rate 1 parser: {rate_class!r}"
         )
-    as_of = today or date.today()
+    as_of = today or datetime.now(EVERSOURCE_TIME_ZONE).date()
     table = _find_supply_table(BeautifulSoup(html, "html.parser"))
 
     header_cells = table.find("tr")

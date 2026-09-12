@@ -5,6 +5,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from datetime import timedelta
 from typing import Any
+from zoneinfo import ZoneInfo
 
 DOMAIN = "eversource_rates"
 CONF_TERRITORY = "territory"
@@ -16,6 +17,8 @@ DEFAULT_UPDATE_INTERVAL_HOURS = 24
 # Fixed select choices (hours). Minute-level polling is intentionally unsupported.
 UPDATE_INTERVAL_HOUR_CHOICES: tuple[int, ...] = (6, 12, 24, 48, 72, 168)
 REQUEST_TIMEOUT_SECONDS = 30
+
+EVERSOURCE_TIME_ZONE = ZoneInfo("America/New_York")
 
 SUPPLY_URL = "https://www.eversource.com/residential/account-billing/manage-bill/about-your-bill/rates-tariffs/electric-supply-rates"
 DELIVERY_URL = "https://www.eversource.com/residential/account-billing/manage-bill/about-your-bill/rates-tariffs/electric-delivery-rates"
@@ -29,6 +32,7 @@ class Territory:
     name: str
     segment: str
     supported_rate_classes: tuple[str, ...]
+    time_zone: ZoneInfo = EVERSOURCE_TIME_ZONE
 
 
 TERRITORIES = {

@@ -12,7 +12,7 @@ Throughout this investigation:
 ## 2. Authentication & Authorization Assessment
 
 ### Finding: Rate Data Is Inherently Public
-Electricity utilities in regulated markets (such as New Hampshire, regulated by the NHPUC) are legally required to publish standard default service supply rates and delivery tariffs. 
+Electricity utilities in regulated markets (such as New Hampshire, regulated by the NHPUC) are legally required to publish standard default service supply rates and delivery tariffs.
 
 - **Rate R** is the standard, default tariff schedule available to any residential electric customer in Eversource's New Hampshire service territory.
 - Because it is a public tariff of general applicability, Eversource makes the data accessible on public web pages without requiring customer authentication or account registration.

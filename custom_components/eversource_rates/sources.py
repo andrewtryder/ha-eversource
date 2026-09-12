@@ -3,8 +3,9 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from zoneinfo import ZoneInfo
 
-from .const import DELIVERY_URL, SUPPLY_URL
+from .const import DELIVERY_URL, EVERSOURCE_TIME_ZONE, SUPPLY_URL
 
 
 @dataclass(frozen=True, slots=True)
@@ -14,6 +15,7 @@ class TariffSource:
     supply_url: str
     delivery_url: str
     segment: str | None = None  # Cookie only when needed
+    time_zone: ZoneInfo = EVERSOURCE_TIME_ZONE
 
 
 # NH keeps the proven generic URLs + segment cookie. CT uses territory-suffixed
