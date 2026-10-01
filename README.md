@@ -6,9 +6,9 @@
 
 [![Open in HACS](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=andrewtryder&repository=ha-eversource&category=integration)
 
-Eversource Rates is an unofficial Home Assistant integration that retrieves public **Eversource electricity** tariffs and exposes a current **USD/kWh** price for the Home Assistant Energy dashboard.
+Eversource Rates is an unofficial Home Assistant integration that retrieves public **Eversource electricity** tariffs, exposes a current **USD/kWh** price for the Home Assistant Energy dashboard, and optionally monitors **municipality-level public outages**.
 
-It provides **price data only**. You still need a separate cumulative **kWh** consumption sensor from Sense, a smart meter, an energy monitor, or another Home Assistant integration.
+For energy monitoring, it provides **tariff price data only**. You still need a separate cumulative **kWh** consumption sensor from Sense, a smart meter, an energy monitor, or another Home Assistant integration.
 
 ## Support
 
@@ -72,6 +72,16 @@ New Hampshire Rate R keeps short entity IDs. Connecticut Rate 1 uses territory-p
 | `sensor.eversource_customer_charge` | Fixed monthly customer charge; not part of the per-kWh Energy price |
 
 Individual delivery components are available as disabled-by-default diagnostic entities.
+
+## Optional municipality outage monitoring
+
+Eversource Rates can optionally monitor municipality-level public outage reports published on Eversource's outage map.
+
+- **Configure via Options**: Enable in **Settings → Devices & services → Eversource Rates → Configure** and select your town or city.
+- **Aggregate only**: Indicates whether Eversource reports any customers without power in the selected municipality; it does *not* monitor your specific home or service address.
+- **Entities created**: A binary sensor (`binary_sensor.<id>_outage`, `on` when customers out > 0) and sensors for customers out and percent out.
+
+For full details, see [Municipality Outage Monitoring](docs/outages.md).
 
 ## Data updates and schedules
 

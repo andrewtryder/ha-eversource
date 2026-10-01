@@ -1,0 +1,40 @@
+{
+  "file_title": "report_conn.json",
+  "file_data": {
+    "areas": [
+      {
+        "area_name": "EVERSOURCE",
+        "cust_a": { "val": 25 },
+        "cust_s": 110000,
+        "areas": [
+          {
+            "area_name": "CT",
+            "cust_a": { "val": 25 },
+            "cust_s": 110000,
+            "areas": [
+              {
+                "area_name": "CTE",
+                "cust_a": { "val": 25 },
+                "cust_s": 110000,
+                "areas": [
+                  {
+                    "area_name": "HARTFORD",
+                    "cust_a": { "val": 25 },
+                    "cust_s": 50000,
+                    "percent_out": 0.05
+                  },
+                  {
+                    "area_name": "STAMFORD",
+                    "cust_a": { "val": 0 },
+                    "cust_s": 60000,
+                    "percent_out": 0.0
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  }
+}

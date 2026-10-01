@@ -1,0 +1,40 @@
+{
+  "file_title": "report_west.json",
+  "file_data": {
+    "areas": [
+      {
+        "area_name": "EVERSOURCE",
+        "cust_a": { "val": 8 },
+        "cust_s": 80000,
+        "areas": [
+          {
+            "area_name": "MA",
+            "cust_a": { "val": 8 },
+            "cust_s": 80000,
+            "areas": [
+              {
+                "area_name": "WMA",
+                "cust_a": { "val": 8 },
+                "cust_s": 80000,
+                "areas": [
+                  {
+                    "area_name": "SPRINGFIELD",
+                    "cust_a": { "val": 8 },
+                    "cust_s": 65000,
+                    "percent_out": 0.012
+                  },
+                  {
+                    "area_name": "AMHERST",
+                    "cust_a": { "val": 0 },
+                    "cust_s": 15000,
+                    "percent_out": 0.0
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  }
+}

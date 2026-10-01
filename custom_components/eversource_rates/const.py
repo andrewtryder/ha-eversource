@@ -13,6 +13,8 @@ CONF_RATE_CLASS = "rate_class"
 CONF_SUPPLY_PLAN = "supply_plan"
 CONF_SERVICE_AREA = "service_area"
 CONF_UPDATE_INTERVAL_HOURS = "update_interval_hours"
+CONF_ENABLE_OUTAGE = "enable_outage"
+CONF_OUTAGE_MUNICIPALITY = "outage_municipality"
 DEFAULT_UPDATE_INTERVAL_HOURS = 24
 # Fixed select choices (hours). Minute-level polling is intentionally unsupported.
 UPDATE_INTERVAL_HOUR_CHOICES: tuple[int, ...] = (6, 12, 24, 48, 72, 168)
@@ -22,6 +24,17 @@ EVERSOURCE_TIME_ZONE = ZoneInfo("America/New_York")
 
 SUPPLY_URL = "https://www.eversource.com/residential/account-billing/manage-bill/about-your-bill/rates-tariffs/electric-supply-rates"
 DELIVERY_URL = "https://www.eversource.com/residential/account-billing/manage-bill/about-your-bill/rates-tariffs/electric-delivery-rates"
+
+OUTAGE_BASE_URL = (
+    "https://outagemap.eversource.com/resources/data/external/interval_generation_data"
+)
+OUTAGE_REPORT_FILES: dict[str, str] = {
+    "nh": "report_hampshire.json",
+    "ct": "report_conn.json",
+    "ema": "report_east.json",
+    "wma": "report_west.json",
+}
+DEFAULT_OUTAGE_UPDATE_INTERVAL_MINUTES = 5
 
 
 @dataclass(frozen=True, slots=True)

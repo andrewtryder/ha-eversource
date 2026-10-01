@@ -14,6 +14,8 @@ from .api import (
     EversourceUnsupportedTariffError,
 )
 from .const import (
+    CONF_ENABLE_OUTAGE,
+    CONF_OUTAGE_MUNICIPALITY,
     CONF_RATE_CLASS,
     CONF_SERVICE_AREA,
     CONF_SUPPLY_PLAN,
@@ -26,6 +28,12 @@ from .const import (
     update_interval_hours_from_options,
     update_interval_options,
 )
+from .outage_api import (
+    EversourceOutageClient,
+    EversourceOutageConnectionError,
+    EversourceOutageParseError,
+)
+from .outage_models import EversourceOutageArea
 from .tariffs import (
     SERVICE_AREA_NAMES,
     SUPPLY_PLAN_NAMES,
@@ -263,26 +271,99 @@ class EversourceRatesConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
 
 class EversourceRatesOptionsFlow(config_entries.OptionsFlowWithReload):
-    """Configure tariff polling interval; saving reloads the config entry."""
+    """Configure tariff polling interval and optional outage monitoring."""
+
+    def __init__(self) -> None:
+        """Initialize transient options state."""
+        self._update_interval_hours: int | None = None
 
     async def async_step_init(self, user_input=None):
-        """Manage the tariff update interval option."""
+        """Manage the tariff update interval option and outage toggle."""
+        current_options = dict(self.config_entry.options)
+        has_outage = bool(current_options.get(CONF_OUTAGE_MUNICIPALITY))
+
         if user_input is not None:
             hours = int(user_input[CONF_UPDATE_INTERVAL_HOURS])
-            return self.async_create_entry(
-                title="",
-                data={CONF_UPDATE_INTERVAL_HOURS: hours},
-            )
+            enable_outage = bool(user_input.get(CONF_ENABLE_OUTAGE, False))
+            if not enable_outage:
+                return self.async_create_entry(
+                    title="",
+                    data={CONF_UPDATE_INTERVAL_HOURS: hours},
+                )
+            self._update_interval_hours = hours
+            return await self.async_step_outage()
 
-        current = update_interval_hours_from_options(dict(self.config_entry.options))
+        current_hours = update_interval_hours_from_options(current_options)
         return self.async_show_form(
             step_id="init",
             data_schema=vol.Schema(
                 {
                     vol.Required(
                         CONF_UPDATE_INTERVAL_HOURS,
-                        default=current or DEFAULT_UPDATE_INTERVAL_HOURS,
+                        default=current_hours or DEFAULT_UPDATE_INTERVAL_HOURS,
                     ): vol.In(update_interval_options()),
+                    vol.Required(
+                        CONF_ENABLE_OUTAGE,
+                        default=has_outage,
+                    ): bool,
                 }
             ),
+        )
+
+    async def async_step_outage(self, user_input=None):
+        """Select municipality from public outage report."""
+        errors: dict[str, str] = {}
+        territory = self.config_entry.data[CONF_TERRITORY]
+
+        client = EversourceOutageClient(async_get_clientsession(self.hass))
+        areas_dict: dict[str, EversourceOutageArea] = {}
+        try:
+            areas_dict = await client.async_list_areas(territory)
+        except EversourceOutageConnectionError:
+            errors["base"] = "cannot_connect"
+        except EversourceOutageParseError:
+            errors["base"] = "invalid_outage_data"
+
+        choices = {
+            norm_name: area.area_name.title() for norm_name, area in areas_dict.items()
+        }
+        sorted_choices = dict(sorted(choices.items(), key=lambda item: item[1]))
+
+        if not errors and user_input is not None:
+            municipality = user_input.get(CONF_OUTAGE_MUNICIPALITY)
+            if municipality and municipality in areas_dict:
+                hours = (
+                    self._update_interval_hours
+                    or update_interval_hours_from_options(
+                        dict(self.config_entry.options)
+                    )
+                )
+                return self.async_create_entry(
+                    title="",
+                    data={
+                        CONF_UPDATE_INTERVAL_HOURS: hours,
+                        CONF_OUTAGE_MUNICIPALITY: municipality,
+                    },
+                )
+            errors["base"] = "invalid_outage_data"
+
+        current_muni = self.config_entry.options.get(CONF_OUTAGE_MUNICIPALITY)
+        default_muni = (
+            current_muni
+            if current_muni in sorted_choices
+            else next(iter(sorted_choices), "")
+        )
+
+        schema = vol.Schema(
+            {
+                vol.Required(
+                    CONF_OUTAGE_MUNICIPALITY,
+                    default=default_muni,
+                ): vol.In(sorted_choices) if sorted_choices else str,
+            }
+        )
+        return self.async_show_form(
+            step_id="outage",
+            data_schema=schema,
+            errors=errors,
         )

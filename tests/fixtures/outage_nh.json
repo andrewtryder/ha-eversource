@@ -1,0 +1,46 @@
+{
+  "file_title": "report_hampshire.json",
+  "file_data": {
+    "areas": [
+      {
+        "area_name": "EVERSOURCE",
+        "cust_a": { "val": 17 },
+        "cust_s": 96000,
+        "areas": [
+          {
+            "area_name": "NH",
+            "cust_a": { "val": 17 },
+            "cust_s": 96000,
+            "areas": [
+              {
+                "area_name": "NHE",
+                "cust_a": { "val": 17 },
+                "cust_s": 96000,
+                "areas": [
+                  {
+                    "area_name": "CONCORD",
+                    "cust_a": { "val": 12 },
+                    "cust_s": 19000,
+                    "percent_out": 0.063
+                  },
+                  {
+                    "area_name": "MANCHESTER",
+                    "cust_a": { "val": 0 },
+                    "cust_s": 45000,
+                    "percent_out": 0.0
+                  },
+                  {
+                    "area_name": "NASHUA",
+                    "cust_a": { "val": 5 },
+                    "cust_s": 32000,
+                    "percent_out": 0.015
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  }
+}

@@ -10,16 +10,18 @@ from homeassistant.components.sensor import (
     SensorEntityDescription,
     SensorStateClass,
 )
-from homeassistant.const import EntityCategory
+from homeassistant.const import PERCENTAGE, EntityCategory
 from homeassistant.core import callback
 from homeassistant.helpers.device_registry import DeviceInfo
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
 from . import EversourceConfigEntry
+from .binary_sensor import outage_device_info
 from .const import DOMAIN, RATE_CLASS_NAMES, TERRITORIES
 from .coordinator import EversourceRatesCoordinator
 from .entity_ids import sensor_object_id
+from .outage_coordinator import EversourceOutageCoordinator
 from .tariffs import SERVICE_AREA_NAMES, SUPPLY_PLAN_NAMES
 
 if TYPE_CHECKING:
@@ -51,6 +53,27 @@ PRIMARY_DESCRIPTIONS = (
         key="customer_charge",
         name="Eversource Customer Charge",
         native_unit_of_measurement=USD_PER_MONTH,
+        state_class=SensorStateClass.MEASUREMENT,
+    ),
+)
+
+OUTAGE_SENSOR_DESCRIPTIONS = (
+    SensorEntityDescription(
+        key="customers_out",
+        name="Customers Out",
+        state_class=SensorStateClass.MEASUREMENT,
+    ),
+    SensorEntityDescription(
+        key="percent_out",
+        name="Percent Out",
+        native_unit_of_measurement=PERCENTAGE,
+        state_class=SensorStateClass.MEASUREMENT,
+    ),
+    SensorEntityDescription(
+        key="customers_served",
+        name="Customers Served",
+        entity_category=EntityCategory.DIAGNOSTIC,
+        entity_registry_enabled_default=False,
         state_class=SensorStateClass.MEASUREMENT,
     ),
 )
@@ -236,3 +259,53 @@ async def async_setup_entry(
         )
 
     entry.async_on_unload(coordinator.async_add_listener(_async_check_components))
+
+    outage_coordinator = entry.runtime_data.outage_coordinator
+    if outage_coordinator is not None:
+        entry_unique_id = entry.unique_id or entry.entry_id
+        async_add_entities(
+            [
+                EversourceOutageSensor(
+                    outage_coordinator,
+                    description,
+                    entry_unique_id,
+                )
+                for description in OUTAGE_SENSOR_DESCRIPTIONS
+            ]
+        )
+
+
+class EversourceOutageSensor(
+    CoordinatorEntity[EversourceOutageCoordinator], SensorEntity
+):
+    """Aggregate outage metric sensor for a municipality."""
+
+    entity_description: SensorEntityDescription
+    _attr_has_entity_name = True
+
+    def __init__(
+        self,
+        coordinator: EversourceOutageCoordinator,
+        description: SensorEntityDescription,
+        entry_unique_id: str,
+    ) -> None:
+        """Initialize one outage metric sensor."""
+        super().__init__(coordinator)
+        self.entity_description = description
+        self._attr_unique_id = f"{entry_unique_id}_{description.key}"
+        self._attr_name = description.name
+        self._attr_device_info = outage_device_info(
+            entry_unique_id, coordinator.municipality
+        )
+
+    @property
+    def native_value(self) -> int | float | None:
+        """Return the current outage metric."""
+        data = self.coordinator.data
+        if self.entity_description.key == "customers_out":
+            return data.customers_out
+        if self.entity_description.key == "percent_out":
+            return data.percent_out
+        if self.entity_description.key == "customers_served":
+            return data.customers_served
+        return None
