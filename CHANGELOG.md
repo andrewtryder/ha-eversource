@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.4.0](https://github.com/andrewtryder/ha-eversource/compare/v0.3.3...v0.4.0) (2026-10-01)
+
+
+### Features
+
+* **outages:** add municipality outage monitoring ([#52](https://github.com/andrewtryder/ha-eversource/issues/52)) ([0e6ff5b](https://github.com/andrewtryder/ha-eversource/commit/0e6ff5bf215648cc62d7879c79fc535ddf28b965))
+
 ## [0.3.3](https://github.com/andrewtryder/ha-eversource/compare/v0.3.2...v0.3.3) (2026-10-01)
 
 
