@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import logging
+import math
 from datetime import UTC, datetime
 from typing import Any
 
@@ -79,7 +80,7 @@ def _parse_leaf_percent(node: dict[str, Any], area_name: str) -> float | None:
             f"Leaf area {area_name} percent_out is non-numeric: {percent_out}"
         )
     parsed_percent = float(percent_out)
-    if parsed_percent < 0 or parsed_percent > 100:
+    if not math.isfinite(parsed_percent) or not 0 <= parsed_percent <= 100:
         raise EversourceOutageParseError(
             f"Leaf area {area_name} percent_out outside plausible range "
             f"[0, 100]: {parsed_percent}"

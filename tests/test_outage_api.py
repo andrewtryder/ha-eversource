@@ -354,6 +354,18 @@ async def test_malformed_report_structure(malformed_report: dict) -> None:
             "cust_s": 100,
             "percent_out": "bad",
         },  # non-numeric percent
+        {
+            "area_name": "TOWN",
+            "cust_a": {"val": 5},
+            "cust_s": 100,
+            "percent_out": float("nan"),
+        },  # NaN percent
+        {
+            "area_name": "TOWN",
+            "cust_a": {"val": 5},
+            "cust_s": 100,
+            "percent_out": float("inf"),
+        },  # infinite percent
     ],
 )
 async def test_malformed_leaf_fails_closed(malformed_leaf: dict) -> None:
