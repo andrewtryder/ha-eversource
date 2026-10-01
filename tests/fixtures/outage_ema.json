@@ -1,0 +1,40 @@
+{
+  "file_title": "report_east.json",
+  "file_data": {
+    "areas": [
+      {
+        "area_name": "EVERSOURCE",
+        "cust_a": { "val": 10 },
+        "cust_s": 140000,
+        "areas": [
+          {
+            "area_name": "MA",
+            "cust_a": { "val": 10 },
+            "cust_s": 140000,
+            "areas": [
+              {
+                "area_name": "EMA",
+                "cust_a": { "val": 10 },
+                "cust_s": 140000,
+                "areas": [
+                  {
+                    "area_name": "BOSTON",
+                    "cust_a": { "val": 10 },
+                    "cust_s": 100000,
+                    "percent_out": 0.01
+                  },
+                  {
+                    "area_name": "CAMBRIDGE",
+                    "cust_a": { "val": 0 },
+                    "cust_s": 40000,
+                    "percent_out": 0.0
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  }
+}

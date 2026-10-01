@@ -73,6 +73,16 @@ New Hampshire Rate R keeps short entity IDs. Connecticut Rate 1 uses territory-p
 
 Individual delivery components are available as disabled-by-default diagnostic entities.
 
+## Optional municipality outage monitoring
+
+Eversource Rates can optionally monitor municipality-level public outage reports published on Eversource's outage map.
+
+- **Configure via Options**: Enable in **Settings → Devices & services → Eversource Rates → Configure** and select your town or city.
+- **Aggregate only**: Indicates whether Eversource reports any customers without power in the selected municipality; it does *not* monitor your specific home or service address.
+- **Entities created**: A binary sensor (`binary_sensor.<id>_outage`, `on` when customers out > 0) and sensors for customers out and percent out.
+
+For full details, see [Municipality Outage Monitoring](docs/outages.md).
+
 ## Data updates and schedules
 
 - **Tariff update interval**: Checks public Eversource tariff pages **every 24 hours** by default.

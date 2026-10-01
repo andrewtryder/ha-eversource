@@ -44,11 +44,23 @@
     "step": {
       "init": {
         "title": "Eversource Rates options",
-        "description": "Choose how often public Eversource tariff pages are checked.",
+        "description": "Choose how often public Eversource tariff pages are checked and optionally enable public outage monitoring.",
         "data": {
-          "update_interval_hours": "Tariff update interval"
+          "update_interval_hours": "Tariff update interval",
+          "enable_outage": "Enable municipality outage monitoring"
+        }
+      },
+      "outage": {
+        "title": "Municipality outage monitoring",
+        "description": "Select your municipality to monitor aggregate public outage data reported by Eversource.",
+        "data": {
+          "outage_municipality": "Municipality"
         }
       }
+    },
+    "error": {
+      "cannot_connect": "Unable to connect to Eversource outage service.",
+      "invalid_outage_data": "Eversource returned public outage data that could not be validated."
     }
   }
 }
