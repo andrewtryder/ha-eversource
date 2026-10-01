@@ -96,7 +96,7 @@ PRs are squash-only. The PR title becomes the commit title on `main`, so it must
 
 Allowed commit types: `feat`, `fix`, `deps`, `docs`, `style`, `refactor`, `perf`, `test`, `build`, `ci`, `chore`, and `revert`. `feat` produces a minor release; `fix` produces a patch release; `feat!` or `fix!` signals a breaking change.
 
-Do not manually edit version numbers or `CHANGELOG.md`; Release Please manages both. Never manually tag or merge a Release Please PR.
+Do not manually edit version numbers or `CHANGELOG.md`; Release Please manages both. Once a Release Please PR has passed validation, merge it normally to publish the release. Do not manually create release tags or GitHub releases.
 
 ## Privacy and scope
 
