@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.3.2](https://github.com/andrewtryder/ha-eversource/compare/v0.3.1...v0.3.2) (2026-10-01)
+
+
+### Bug Fixes
+
+* **deps:** use minimum version for beautifulsoup4 requirement ([#47](https://github.com/andrewtryder/ha-eversource/issues/47)) ([cfcdb32](https://github.com/andrewtryder/ha-eversource/commit/cfcdb32809e8340186c0b5e1c3531094c8c7e330))
+
 ## [0.3.1](https://github.com/andrewtryder/ha-eversource/compare/v0.3.0...v0.3.1) (2026-09-12)
 
 
