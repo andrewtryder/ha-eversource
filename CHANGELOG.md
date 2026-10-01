@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.3.3](https://github.com/andrewtryder/ha-eversource/compare/v0.3.2...v0.3.3) (2026-10-01)
+
+
+### Bug Fixes
+
+* improve tariff integration lifecycle and component discovery ([d8d2ac5](https://github.com/andrewtryder/ha-eversource/commit/d8d2ac512ccecdff22e4d1228cdbb5c034a0ee9e))
+
 ## [0.3.2](https://github.com/andrewtryder/ha-eversource/compare/v0.3.1...v0.3.2) (2026-10-01)
 
 
