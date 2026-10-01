@@ -268,3 +268,21 @@ def test_implausible_total_variable_rate_fails_safely(
     monkeypatch.setattr(api_mod, "parse_tariff", _implausible)
     with pytest.raises(EversourceTariffParseError, match="plausible range"):
         asyncio.run(_client(session).async_get_rates())
+
+
+def test_async_fetch_direct_calls() -> None:
+    session = FakeSession([FakeResponse(200, "page content")])
+    client = _client(session)
+    content = asyncio.run(client._async_fetch("https://example.com/test"))
+    assert content == "page content"
+    assert session.calls[0][1]["headers"] == {}
+
+    session_with_headers = FakeSession([FakeResponse(200, "header content")])
+    client2 = _client(session_with_headers)
+    content2 = asyncio.run(
+        client2._async_fetch(
+            "https://example.com/test", headers={"Cookie": ".SEGMENT=nh"}
+        )
+    )
+    assert content2 == "header content"
+    assert session_with_headers.calls[0][1]["headers"] == {"Cookie": ".SEGMENT=nh"}

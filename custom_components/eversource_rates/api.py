@@ -77,16 +77,15 @@ class EversourceClient:
         """Return the logical tariff selection for this client."""
         return self._selection
 
-    async def _async_fetch(self, url: str) -> str:
-        headers: dict[str, str] = {}
-        assert self._source is not None
-        if self._source.segment is not None:
-            headers["Cookie"] = f".SEGMENT={self._source.segment}"
+    async def _async_fetch(
+        self, url: str, *, headers: dict[str, str] | None = None
+    ) -> str:
+        """Retrieve raw HTML from a tariff URL."""
         try:
             timeout = aiohttp.ClientTimeout(total=REQUEST_TIMEOUT_SECONDS)
             async with self._session.get(
                 url,
-                headers=headers,
+                headers=headers or {},
                 timeout=timeout,
                 allow_redirects=True,
             ) as response:
@@ -118,9 +117,14 @@ class EversourceClient:
             selection.territory,
             selection.rate_class,
         )
+        headers = (
+            {"Cookie": f".SEGMENT={source.segment}"}
+            if source.segment is not None
+            else None
+        )
         supply_html, delivery_html = await asyncio.gather(
-            self._async_fetch(source.supply_url),
-            self._async_fetch(source.delivery_url),
+            self._async_fetch(source.supply_url, headers=headers),
+            self._async_fetch(source.delivery_url, headers=headers),
         )
         as_of = datetime.now(source.time_zone).date()
         try:

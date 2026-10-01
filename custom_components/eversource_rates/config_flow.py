@@ -127,13 +127,18 @@ class EversourceRatesConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             data[CONF_SERVICE_AREA] = selection.service_area
         return self.async_create_entry(title=" — ".join(title_parts), data=data)
 
-    def _map_client_error(self, err: Exception) -> str | None:
-        if isinstance(err, EversourceConnectionError):
-            return "cannot_connect"
-        if isinstance(err, EversourceTariffParseError):
-            return "invalid_tariff_data"
-        if isinstance(err, EversourceUnsupportedTariffError):
-            return "unsupported_tariff"
+    async def _async_try_finalize(
+        self, errors: dict[str, str]
+    ) -> config_entries.ConfigFlowResult | None:
+        """Validate and finalize the entry, mapping client errors into form errors."""
+        try:
+            return await self._async_finalize()
+        except EversourceConnectionError:
+            errors["base"] = "cannot_connect"
+        except EversourceTariffParseError:
+            errors["base"] = "invalid_tariff_data"
+        except EversourceUnsupportedTariffError:
+            errors["base"] = "unsupported_tariff"
         return None
 
     async def async_step_user(self, user_input=None):
@@ -177,14 +182,8 @@ class EversourceRatesConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                     return await self.async_step_supply_plan()
                 if definition and definition.service_areas:
                     return await self.async_step_service_area()
-                try:
-                    return await self._async_finalize()
-                except (
-                    EversourceConnectionError,
-                    EversourceTariffParseError,
-                    EversourceUnsupportedTariffError,
-                ) as err:
-                    errors["base"] = self._map_client_error(err) or "unsupported_tariff"
+                if result := await self._async_try_finalize(errors):
+                    return result
 
         default_rate = next(iter(options))
         return self.async_show_form(
@@ -216,14 +215,8 @@ class EversourceRatesConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 definition = get_tariff_definition(self._territory, self._rate_class)
                 if definition and definition.service_areas:
                     return await self.async_step_service_area()
-                try:
-                    return await self._async_finalize()
-                except (
-                    EversourceConnectionError,
-                    EversourceTariffParseError,
-                    EversourceUnsupportedTariffError,
-                ) as err:
-                    errors["base"] = self._map_client_error(err) or "unsupported_tariff"
+                if result := await self._async_try_finalize(errors):
+                    return result
 
         default_plan = next(iter(options))
         return self.async_show_form(
@@ -252,14 +245,8 @@ class EversourceRatesConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 errors["base"] = "unsupported_tariff"
             else:
                 self._service_area = service_area
-                try:
-                    return await self._async_finalize()
-                except (
-                    EversourceConnectionError,
-                    EversourceTariffParseError,
-                    EversourceUnsupportedTariffError,
-                ) as err:
-                    errors["base"] = self._map_client_error(err) or "unsupported_tariff"
+                if result := await self._async_try_finalize(errors):
+                    return result
 
         default_area = next(iter(options))
         return self.async_show_form(
