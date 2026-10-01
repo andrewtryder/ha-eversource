@@ -11,6 +11,7 @@ from homeassistant.components.sensor import (
     SensorStateClass,
 )
 from homeassistant.const import EntityCategory
+from homeassistant.core import callback
 from homeassistant.helpers.device_registry import DeviceInfo
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
@@ -203,7 +204,9 @@ async def async_setup_entry(
     """Set up all stable known sensors and current parsed component sensors."""
     coordinator = entry.runtime_data.coordinator
     components = coordinator.data.delivery.variable_components
-    entities = [
+    known_components: set[str] = set(components)
+
+    entities: list[SensorEntity] = [
         EversourceSensor(coordinator, description)
         for description in PRIMARY_DESCRIPTIONS
     ]
@@ -212,3 +215,24 @@ async def async_setup_entry(
         for key, component in components.items()
     )
     async_add_entities(entities)
+
+    @callback
+    def _async_check_components() -> None:
+        """Add sensors for any newly discovered delivery components."""
+        if not coordinator.last_update_success or not coordinator.data:
+            return
+        current_components = coordinator.data.delivery.variable_components
+        new_keys = [key for key in current_components if key not in known_components]
+        if not new_keys:
+            return
+        known_components.update(new_keys)
+        async_add_entities(
+            [
+                EversourceComponentSensor(
+                    coordinator, key, f"Eversource {current_components[key].label}"
+                )
+                for key in new_keys
+            ]
+        )
+
+    entry.async_on_unload(coordinator.async_add_listener(_async_check_components))

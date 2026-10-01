@@ -380,3 +380,147 @@ async def test_config_flow_aborts_when_territory_has_no_rate_classes(
     )
     assert result["type"] == FlowResultType.ABORT
     assert result["reason"] == "unsupported_tariff"
+
+
+async def test_config_flow_try_finalize_unexpected_exception_propagates(
+    hass: HomeAssistant,
+) -> None:
+    """Unexpected exceptions are not caught or converted into form errors."""
+    from custom_components.eversource_rates.config_flow import (
+        EversourceRatesConfigFlow,
+    )
+
+    flow = EversourceRatesConfigFlow()
+    flow.hass = hass
+    errors: dict[str, str] = {}
+
+    with patch.object(
+        flow,
+        "_async_finalize",
+        AsyncMock(side_effect=RuntimeError("unexpected failure")),
+    ):
+        with pytest.raises(RuntimeError, match="unexpected failure"):
+            await flow._async_try_finalize(errors)
+    assert errors == {}
+
+
+async def test_config_flow_try_finalize_maps_all_client_errors(
+    hass: HomeAssistant,
+) -> None:
+    """_async_try_finalize accurately maps all 3 known client exceptions."""
+    from custom_components.eversource_rates.api import (
+        EversourceConnectionError,
+        EversourceTariffParseError,
+        EversourceUnsupportedTariffError,
+    )
+    from custom_components.eversource_rates.config_flow import (
+        EversourceRatesConfigFlow,
+    )
+
+    flow = EversourceRatesConfigFlow()
+    flow.hass = hass
+
+    errors: dict[str, str] = {}
+    with patch.object(
+        flow,
+        "_async_finalize",
+        AsyncMock(side_effect=EversourceConnectionError("down")),
+    ):
+        res = await flow._async_try_finalize(errors)
+    assert res is None
+    assert errors["base"] == "cannot_connect"
+
+    errors = {}
+    with patch.object(
+        flow,
+        "_async_finalize",
+        AsyncMock(side_effect=EversourceTariffParseError("bad")),
+    ):
+        res = await flow._async_try_finalize(errors)
+    assert res is None
+    assert errors["base"] == "invalid_tariff_data"
+
+    errors = {}
+    with patch.object(
+        flow,
+        "_async_finalize",
+        AsyncMock(side_effect=EversourceUnsupportedTariffError("no")),
+    ):
+        res = await flow._async_try_finalize(errors)
+    assert res is None
+    assert errors["base"] == "unsupported_tariff"
+
+
+def test_supply_plan_and_service_area_options_handle_unknown_tariffs() -> None:
+    """Options helpers return empty dict for unknown tariffs."""
+    from custom_components.eversource_rates.config_flow import (
+        _service_area_options,
+        _supply_plan_options,
+    )
+
+    assert _supply_plan_options("unknown", "unknown") == {}
+    assert _service_area_options("unknown", "unknown") == {}
+
+
+async def test_config_flow_rate_class_with_only_service_areas(
+    hass: HomeAssistant, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Rate class with service_areas but no supply_plans goes to service_area."""
+    from custom_components.eversource_rates.tariffs import (
+        TARIFF_DEFINITIONS,
+        TariffDefinition,
+    )
+
+    monkeypatch.setitem(
+        TERRITORIES,
+        "ema",
+        Territory("ema", "Eastern Massachusetts", "ema", ("r1",)),
+    )
+    monkeypatch.setitem(
+        TARIFF_DEFINITIONS,
+        ("ema", "r1"),
+        TariffDefinition(
+            "ema",
+            "r1",
+            "R1 - Residential Non-Heating",
+            supply_plans=(),
+            service_areas=("main", "cape"),
+        ),
+    )
+    result = await hass.config_entries.flow.async_init(
+        DOMAIN, context={"source": "user"}
+    )
+    result = await hass.config_entries.flow.async_configure(
+        result["flow_id"], {CONF_TERRITORY: "ema"}
+    )
+    result = await hass.config_entries.flow.async_configure(
+        result["flow_id"], {CONF_RATE_CLASS: "r1"}
+    )
+    assert result["type"] == FlowResultType.FORM
+    assert result["step_id"] == "service_area"
+
+
+async def test_config_flow_defensive_invalid_supply_plan_and_service_area(
+    hass: HomeAssistant,
+) -> None:
+    """Direct step calls reject invalid supply_plan and service_area values."""
+    from custom_components.eversource_rates.config_flow import (
+        CONF_SERVICE_AREA,
+        CONF_SUPPLY_PLAN,
+        EversourceRatesConfigFlow,
+    )
+
+    flow = EversourceRatesConfigFlow()
+    flow.hass = hass
+    flow._territory = "wma"
+    flow._rate_class = "r1"
+
+    bad_plan = await flow.async_step_supply_plan({CONF_SUPPLY_PLAN: "invalid_plan"})
+    assert bad_plan["type"] == FlowResultType.FORM
+    assert bad_plan["errors"] == {"base": "unsupported_tariff"}
+
+    flow._territory = "ema"
+    flow._rate_class = "r1"
+    bad_area = await flow.async_step_service_area({CONF_SERVICE_AREA: "invalid_area"})
+    assert bad_area["type"] == FlowResultType.FORM
+    assert bad_area["errors"] == {"base": "unsupported_tariff"}

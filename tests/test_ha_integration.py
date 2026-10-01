@@ -359,3 +359,124 @@ async def test_diagnostic_rider_survives_disappear_and_reappear(
     await coordinator.async_refresh()
     assert sensor.available is True
     assert sensor.native_value == Decimal("0.001")
+
+
+async def test_dynamically_add_newly_discovered_delivery_components(
+    hass: HomeAssistant, rates
+) -> None:
+    """Dynamically add entities for newly discovered components on refresh."""
+    from copy import replace
+
+    from custom_components.eversource_rates.models import (
+        DeliveryComponent,
+        DeliveryRates,
+    )
+
+    entry = MockConfigEntry(
+        domain=DOMAIN,
+        data={CONF_TERRITORY: "nh", CONF_RATE_CLASS: "r"},
+        unique_id="eversource_rates_nh_r",
+    )
+    entry.add_to_hass(hass)
+
+    client_mock = AsyncMock()
+    client_mock.async_get_rates = AsyncMock(return_value=rates)
+
+    with patch(
+        "custom_components.eversource_rates.EversourceClient",
+        return_value=client_mock,
+    ):
+        assert await hass.config_entries.async_setup(entry.entry_id)
+        await hass.async_block_till_done()
+
+    registry = er.async_get(hass)
+
+    # Initial component entities are created normally
+    assert registry.async_get("sensor.eversource_distribution_charge") is not None
+    assert registry.async_get("sensor.eversource_new_reliability_rider") is None
+
+    coordinator = entry.runtime_data.coordinator
+
+    # Refresh with same rates: no new entities added, no errors
+    await coordinator.async_refresh()
+    await hass.async_block_till_done()
+    assert registry.async_get("sensor.eversource_new_reliability_rider") is None
+
+    # Failed refresh: last_update_success is False, check does nothing
+    client_mock.async_get_rates.side_effect = EversourceConnectionError(
+        "temporary drop"
+    )
+    await coordinator.async_refresh()
+    await hass.async_block_till_done()
+    assert coordinator.last_update_success is False
+    assert registry.async_get("sensor.eversource_new_reliability_rider") is None
+
+    # Now a new component appears on successful refresh
+    components_with_new = dict(rates.delivery.variable_components)
+    components_with_new["new_reliability_rider"] = DeliveryComponent(
+        "new_reliability_rider",
+        "New Reliability Rider",
+        Decimal("0.00234"),
+    )
+    rates_with_new = replace(
+        rates,
+        delivery=DeliveryRates(rates.delivery.customer_charge, components_with_new),
+    )
+    client_mock.async_get_rates.side_effect = None
+    client_mock.async_get_rates.return_value = rates_with_new
+
+    await coordinator.async_refresh()
+    await hass.async_block_till_done()
+
+    # Verify new entity was added
+    new_entity_entry = registry.async_get("sensor.eversource_new_reliability_rider")
+    assert new_entity_entry is not None
+    assert new_entity_entry.unique_id == "eversource_rates_nh_r_new_reliability_rider"
+    assert new_entity_entry.original_name == "Eversource New Reliability Rider"
+
+    # Repeated refreshes do not create duplicate entities
+    await coordinator.async_refresh()
+    await hass.async_block_till_done()
+    assert registry.async_get("sensor.eversource_new_reliability_rider_2") is None
+    assert registry.async_get("sensor.eversource_new_reliability_rider") is not None
+
+    # Existing component disappears and its entity becomes unavailable
+    registry.async_update_entity(
+        "sensor.eversource_distribution_charge", disabled_by=None
+    )
+    with patch(
+        "custom_components.eversource_rates.EversourceClient",
+        return_value=client_mock,
+    ):
+        assert await hass.config_entries.async_reload(entry.entry_id)
+        await hass.async_block_till_done()
+
+    dist_state = hass.states.get("sensor.eversource_distribution_charge")
+    assert dist_state is not None
+    assert dist_state.state == "0.06727"
+
+    # Refresh with distribution charge removed
+    components_without_dist = dict(rates_with_new.delivery.variable_components)
+    del components_without_dist["distribution_charge"]
+    rates_without_dist = replace(
+        rates_with_new,
+        delivery=DeliveryRates(
+            rates_with_new.delivery.customer_charge, components_without_dist
+        ),
+    )
+    coordinator = entry.runtime_data.coordinator
+    client_mock.async_get_rates.return_value = rates_without_dist
+
+    await coordinator.async_refresh()
+    await hass.async_block_till_done()
+
+    # Entity remains registered but unavailable
+    assert registry.async_get("sensor.eversource_distribution_charge") is not None
+    dist_state_after = hass.states.get("sensor.eversource_distribution_charge")
+    assert dist_state_after is not None
+    assert dist_state_after.state == "unavailable"
+
+    # Entry unload cleans up coordinator listener
+    assert await hass.config_entries.async_unload(entry.entry_id)
+    await hass.async_block_till_done()
+    assert entry.state is ConfigEntryState.NOT_LOADED
