@@ -6,9 +6,9 @@
 
 [![Open in HACS](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=andrewtryder&repository=ha-eversource&category=integration)
 
-Eversource Rates is an unofficial Home Assistant integration that retrieves public **Eversource electricity** tariffs and exposes a current **USD/kWh** price for the Home Assistant Energy dashboard.
+Eversource Rates is an unofficial Home Assistant integration that retrieves public **Eversource electricity** tariffs, exposes a current **USD/kWh** price for the Home Assistant Energy dashboard, and optionally monitors **municipality-level public outages**.
 
-It provides **price data only**. You still need a separate cumulative **kWh** consumption sensor from Sense, a smart meter, an energy monitor, or another Home Assistant integration.
+For energy monitoring, it provides **tariff price data only**. You still need a separate cumulative **kWh** consumption sensor from Sense, a smart meter, an energy monitor, or another Home Assistant integration.
 
 ## Support
 

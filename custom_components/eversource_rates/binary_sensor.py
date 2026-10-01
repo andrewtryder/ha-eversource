@@ -10,7 +10,6 @@ from homeassistant.components.binary_sensor import (
 )
 from homeassistant.helpers.device_registry import DeviceInfo
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
-from homeassistant.util import slugify
 
 from .const import DOMAIN
 from .outage_coordinator import EversourceOutageCoordinator
@@ -24,12 +23,11 @@ if TYPE_CHECKING:
 OUTAGE_MAP_URL = "https://outagemap.eversource.com/external/default.html"
 
 
-def outage_device_info(territory: str, municipality: str) -> DeviceInfo:
+def outage_device_info(entry_unique_id: str, municipality: str) -> DeviceInfo:
     """Return shared DeviceInfo for municipality outage entities."""
-    slug = slugify(municipality)
     display_name = municipality.title()
     return DeviceInfo(
-        identifiers={(DOMAIN, f"{territory}_{slug}_outage")},
+        identifiers={(DOMAIN, f"{entry_unique_id}_outage")},
         name=f"Eversource {display_name} Outage",
         manufacturer="Eversource",
         model="Outage reporting",
@@ -43,23 +41,20 @@ class EversourceOutageBinarySensor(
     """Binary sensor indicating if any customers are out in the municipality."""
 
     _attr_device_class = BinarySensorDeviceClass.PROBLEM
-    _attr_has_entity_name = False
+    _attr_has_entity_name = True
+    _attr_name = None
 
     def __init__(
         self,
         coordinator: EversourceOutageCoordinator,
-        territory: str,
-        municipality: str,
+        entry_unique_id: str,
     ) -> None:
         """Initialize the outage binary sensor."""
         super().__init__(coordinator)
-        self._territory = territory
-        self._municipality = municipality
-        slug = slugify(municipality)
-        self._attr_unique_id = f"{DOMAIN}_{territory}_{slug}_outage"
-        self.entity_id = f"binary_sensor.eversource_{territory}_{slug}_outage"
-        self._attr_name = f"Eversource {municipality.title()} Outage"
-        self._attr_device_info = outage_device_info(territory, municipality)
+        self._attr_unique_id = f"{entry_unique_id}_outage"
+        self._attr_device_info = outage_device_info(
+            entry_unique_id, coordinator.municipality
+        )
 
     @property
     def is_on(self) -> bool:
@@ -91,12 +86,12 @@ async def async_setup_entry(
     if outage_coordinator is None:
         return
 
+    entry_unique_id = entry.unique_id or entry.entry_id
     async_add_entities(
         [
             EversourceOutageBinarySensor(
                 outage_coordinator,
-                outage_coordinator.territory,
-                outage_coordinator.municipality,
+                entry_unique_id,
             )
         ]
     )

@@ -435,3 +435,35 @@ async def test_intermediate_nodes_not_exposed_as_municipalities() -> None:
     assert "NORTH REGION" not in areas
     assert "TOWN A" in areas
     assert "TOWN B" in areas
+
+
+@pytest.mark.parametrize("invalid_areas", [{}, "not_a_list", 123])
+async def test_node_with_malformed_areas_container_fails_closed(
+    invalid_areas: object,
+) -> None:
+    """Node with non-list areas attribute fails closed with parse error."""
+    meta_json = {"directory": "2026_10_01_12_00_00"}
+    report = {
+        "file_data": {
+            "areas": [
+                {
+                    "area_name": "TOWN A",
+                    "cust_a": {"val": 2},
+                    "cust_s": 200,
+                    "areas": invalid_areas,
+                }
+            ]
+        }
+    }
+    session = FakeSession(
+        [
+            FakeResponse(200, meta_json),
+            FakeResponse(200, report),
+        ]
+    )
+    client = EversourceOutageClient(session)
+
+    with pytest.raises(
+        EversourceOutageParseError, match="has invalid 'areas' container"
+    ):
+        await client.async_list_areas("nh")

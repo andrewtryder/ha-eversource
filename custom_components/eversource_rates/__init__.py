@@ -4,6 +4,7 @@ from __future__ import annotations
 
 try:
     from homeassistant.config_entries import ConfigEntry
+    from homeassistant.const import Platform
     from homeassistant.core import HomeAssistant
 except ModuleNotFoundError as err:  # pragma: no cover - developer tooling without HA
     # Allow importing parser/api modules from tools/ without Home Assistant installed.
@@ -36,13 +37,12 @@ else:
 
     type EversourceConfigEntry = ConfigEntry[EversourceRuntimeData]
 
-    PLATFORMS = ("sensor", "binary_sensor")
+    PLATFORMS: tuple[Platform, ...] = (Platform.SENSOR, Platform.BINARY_SENSOR)
 
     async def async_setup_entry(
         hass: HomeAssistant, entry: EversourceConfigEntry
     ) -> bool:
         """Set up Eversource Rates from a config entry."""
-        from homeassistant.const import Platform
         from homeassistant.helpers.aiohttp_client import async_get_clientsession
 
         from .tariffs import selection_from_entry_data
@@ -69,30 +69,20 @@ else:
                 territory=entry.data[CONF_TERRITORY],
                 municipality=outage_municipality,
             )
-            try:
-                await outage_coordinator.async_config_entry_first_refresh()
-            except Exception:
-                _LOGGER.warning(
-                    "Initial outage refresh failed for %s (%s); tariff setup continues",
-                    outage_municipality,
-                    entry.data[CONF_TERRITORY],
-                )
+            # Use async_refresh() so an initial outage API failure logs a warning and
+            # marks the coordinator unsuccessful without raising ConfigEntryNotReady
+            # or catching broad programming exceptions.
+            await outage_coordinator.async_refresh()
 
         entry.runtime_data = EversourceRuntimeData(
             coordinator=coordinator,
             outage_coordinator=outage_coordinator,
         )
-        await hass.config_entries.async_forward_entry_setups(
-            entry, (Platform.SENSOR, Platform.BINARY_SENSOR)
-        )
+        await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
         return True
 
     async def async_unload_entry(
         hass: HomeAssistant, entry: EversourceConfigEntry
     ) -> bool:
         """Unload an Eversource config entry."""
-        from homeassistant.const import Platform
-
-        return await hass.config_entries.async_unload_platforms(
-            entry, (Platform.SENSOR, Platform.BINARY_SENSOR)
-        )
+        return await hass.config_entries.async_unload_platforms(entry, PLATFORMS)

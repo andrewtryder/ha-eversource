@@ -125,10 +125,15 @@ def _collect_leaf_areas(
         raise EversourceOutageParseError("Area node is not a JSON object")
 
     children = node.get("areas")
-    if isinstance(children, list) and children:
-        for child in children:
-            _collect_leaf_areas(child, territory, source_url, retrieved_at, out)
-        return
+    if children is not None:
+        if not isinstance(children, list):
+            raise EversourceOutageParseError(
+                f"Area node '{node.get('area_name', '')}' has invalid 'areas' container"
+            )
+        if children:
+            for child in children:
+                _collect_leaf_areas(child, territory, source_url, retrieved_at, out)
+            return
 
     area = _parse_leaf_node(node, territory, source_url, retrieved_at)
     norm_name = normalize_municipality_name(area.area_name)

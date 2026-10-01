@@ -35,7 +35,7 @@ To disable outage monitoring, open **Configure**, uncheck **Enable municipality 
 
 ## Entities
 
-When enabled, a separate logical device is created for outage monitoring (e.g., `Eversource Outage (Concord)`):
+When enabled, a separate logical device is created for outage monitoring (e.g., `Eversource Concord Outage`):
 
 | Entity | Type | Description |
 | --- | --- | --- |
@@ -44,9 +44,12 @@ When enabled, a separate logical device is created for outage monitoring (e.g., 
 | `sensor.<id>_percent_out` | Sensor (`%`) | Percentage of customers reported without power. |
 | `sensor.<id>_customers_served` | Sensor (Diagnostic) | Total customers served in the municipality (disabled by default). |
 
+> [!NOTE]
+> Outage entity unique IDs and device identifiers are derived from your tariff configuration entry identity (e.g. `eversource_rates_nh_r_outage`). This prevents collisions if multiple config entries share the same territory and ensures that changing your monitored municipality updates the existing entities rather than creating orphaned duplicates.
+
 ### Attributes
 
-The outage binary sensor and sensors include helpful diagnostic attributes:
+The outage binary sensor includes helpful diagnostic attributes:
 - `municipality`: Name of the selected municipality (e.g. `CONCORD`).
 - `territory`: Service territory code (`nh`, `ct`, `ema`, `wma`).
 - `customers_out`: Current count of customers without power.

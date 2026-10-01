@@ -315,19 +315,6 @@ class EversourceRatesOptionsFlow(config_entries.OptionsFlowWithReload):
         errors: dict[str, str] = {}
         territory = self.config_entry.data[CONF_TERRITORY]
 
-        if user_input is not None:
-            municipality = user_input[CONF_OUTAGE_MUNICIPALITY]
-            hours = self._update_interval_hours or update_interval_hours_from_options(
-                dict(self.config_entry.options)
-            )
-            return self.async_create_entry(
-                title="",
-                data={
-                    CONF_UPDATE_INTERVAL_HOURS: hours,
-                    CONF_OUTAGE_MUNICIPALITY: municipality,
-                },
-            )
-
         client = EversourceOutageClient(async_get_clientsession(self.hass))
         areas_dict: dict[str, EversourceOutageArea] = {}
         try:
@@ -341,6 +328,24 @@ class EversourceRatesOptionsFlow(config_entries.OptionsFlowWithReload):
             norm_name: area.area_name.title() for norm_name, area in areas_dict.items()
         }
         sorted_choices = dict(sorted(choices.items(), key=lambda item: item[1]))
+
+        if not errors and user_input is not None:
+            municipality = user_input.get(CONF_OUTAGE_MUNICIPALITY)
+            if municipality and municipality in areas_dict:
+                hours = (
+                    self._update_interval_hours
+                    or update_interval_hours_from_options(
+                        dict(self.config_entry.options)
+                    )
+                )
+                return self.async_create_entry(
+                    title="",
+                    data={
+                        CONF_UPDATE_INTERVAL_HOURS: hours,
+                        CONF_OUTAGE_MUNICIPALITY: municipality,
+                    },
+                )
+            errors["base"] = "invalid_outage_data"
 
         current_muni = self.config_entry.options.get(CONF_OUTAGE_MUNICIPALITY)
         default_muni = (

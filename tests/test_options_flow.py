@@ -203,11 +203,16 @@ async def test_options_flow_enable_outage_monitoring(
             "custom_components.eversource_rates.outage_api.EversourceOutageClient.async_get_area",
             AsyncMock(return_value=mock_sample),
         ),
+        patch(
+            "custom_components.eversource_rates.outage_api.EversourceOutageClient.async_list_areas",
+            AsyncMock(return_value=_mock_outage_areas()),
+        ),
     ):
         result = await hass.config_entries.options.async_configure(
             result["flow_id"],
             {CONF_OUTAGE_MUNICIPALITY: "CONCORD"},
         )
+
         await hass.async_block_till_done()
 
     assert result["type"] == FlowResultType.CREATE_ENTRY
@@ -322,3 +327,60 @@ async def test_options_flow_outage_parse_error(hass: HomeAssistant, rates) -> No
     assert result["type"] == FlowResultType.FORM
     assert result["step_id"] == "outage"
     assert result["errors"]["base"] == "invalid_outage_data"
+
+
+async def test_options_flow_outage_discovery_failure_cannot_be_bypassed(
+    hass: HomeAssistant, rates
+) -> None:
+    """Discovery failure cannot be bypassed by submitting an arbitrary municipality.
+
+    1. Fetch fails
+    2. Form displays error
+    3. User submits arbitrary municipality
+    4. Options are NOT saved
+    """
+    entry = MockConfigEntry(
+        domain=DOMAIN,
+        data={CONF_TERRITORY: "nh", CONF_RATE_CLASS: "r"},
+        unique_id="eversource_rates_nh_r",
+    )
+    entry.add_to_hass(hass)
+    with patch(
+        "custom_components.eversource_rates.EversourceClient.async_get_rates",
+        AsyncMock(return_value=rates),
+    ):
+        assert await hass.config_entries.async_setup(entry.entry_id)
+        await hass.async_block_till_done()
+
+    result = await hass.config_entries.options.async_init(entry.entry_id)
+    assert result["type"] == FlowResultType.FORM
+    assert result["step_id"] == "init"
+
+    # Step 1 & 2: Fetch fails -> form displays error
+    with patch(
+        "custom_components.eversource_rates.outage_api.EversourceOutageClient.async_list_areas",
+        AsyncMock(side_effect=EversourceOutageConnectionError("Connection lost")),
+    ):
+        result = await hass.config_entries.options.async_configure(
+            result["flow_id"],
+            {CONF_UPDATE_INTERVAL_HOURS: 24, CONF_ENABLE_OUTAGE: True},
+        )
+
+    assert result["type"] == FlowResultType.FORM
+    assert result["step_id"] == "outage"
+    assert result["errors"]["base"] == "cannot_connect"
+
+    # Step 3 & 4: User submits arbitrary municipality while discovery fails -> NOT saved
+    with patch(
+        "custom_components.eversource_rates.outage_api.EversourceOutageClient.async_list_areas",
+        AsyncMock(side_effect=EversourceOutageConnectionError("Connection lost")),
+    ):
+        result = await hass.config_entries.options.async_configure(
+            result["flow_id"],
+            {CONF_OUTAGE_MUNICIPALITY: "ARBITRARY_CITY"},
+        )
+
+    assert result["type"] == FlowResultType.FORM
+    assert result["step_id"] == "outage"
+    assert result["errors"]["base"] == "cannot_connect"
+    assert CONF_OUTAGE_MUNICIPALITY not in entry.options
