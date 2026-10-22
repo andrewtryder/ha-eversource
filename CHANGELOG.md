@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.4.1](https://github.com/andrewtryder/ha-eversource/compare/v0.4.0...v0.4.1) (2026-10-22)
+
+
+### Bug Fixes
+
+* restore nh tariff html retrieval ([#68](https://github.com/andrewtryder/ha-eversource/issues/68)) ([0c01722](https://github.com/andrewtryder/ha-eversource/commit/0c017223618d1e0a6197d73d7cd4cc3050a360f0))
+
 ## [0.4.0](https://github.com/andrewtryder/ha-eversource/compare/v0.3.3...v0.4.0) (2026-10-01)
 
 
