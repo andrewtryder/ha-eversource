@@ -1,4 +1,4 @@
-"""Non-brute-force probe of tariff segments verified for this project."""
+"""Non-brute-force probe of configured public tariff URLs."""
 
 from __future__ import annotations
 
@@ -10,18 +10,13 @@ import aiohttp
 from bs4 import BeautifulSoup
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
-from custom_components.eversource_rates.const import (  # noqa: E402
-    DELIVERY_URL,
-    SUPPLY_URL,
-)
+from custom_components.eversource_rates.sources import get_tariff_source  # noqa: E402
 
-VERIFIED_SEGMENTS = {"New Hampshire": "nh"}
+VERIFIED_TARIFFS = {"New Hampshire": ("nh", "r")}
 
 
-async def _probe(
-    session: aiohttp.ClientSession, url: str, segment: str
-) -> dict[str, object]:
-    async with session.get(url, headers={"Cookie": f".SEGMENT={segment}"}) as response:
+async def _probe(session: aiohttp.ClientSession, url: str) -> dict[str, object]:
+    async with session.get(url) as response:
         html = await response.text()
         soup = BeautifulSoup(html, "html.parser")
         detected_territory = (
@@ -41,14 +36,14 @@ async def _probe(
 
 async def main() -> None:
     async with aiohttp.ClientSession() as session:
-        for territory, segment in VERIFIED_SEGMENTS.items():
+        for territory, selection in VERIFIED_TARIFFS.items():
+            source = get_tariff_source(*selection)
+            assert source is not None
             supply, delivery = await asyncio.gather(
-                _probe(session, SUPPLY_URL, segment),
-                _probe(session, DELIVERY_URL, segment),
+                _probe(session, source.supply_url),
+                _probe(session, source.delivery_url),
             )
-            print(
-                f"{territory} ({segment})\n  supply: {supply}\n  delivery: {delivery}"
-            )
+            print(f"{territory}\n  supply: {supply}\n  delivery: {delivery}")
 
 
 if __name__ == "__main__":

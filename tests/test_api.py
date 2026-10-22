@@ -1,6 +1,7 @@
 """Offline HTTP client behavior tests."""
 
 import asyncio
+import logging
 from decimal import Decimal
 from pathlib import Path
 
@@ -61,7 +62,7 @@ def _client(
     )
 
 
-def test_dual_fetch_uses_only_explicit_segment_cookie() -> None:
+def test_nh_fetch_uses_suffixed_urls_without_cookie() -> None:
     session = FakeSession(
         [
             FakeResponse(200, (FIXTURES / "sanitized_supply.html").read_text()),
@@ -71,11 +72,13 @@ def test_dual_fetch_uses_only_explicit_segment_cookie() -> None:
     rates = asyncio.run(_client(session).async_get_rates())
     assert str(rates.total_variable_rate) == "0.25918"
     assert rates.territory == "nh"
-    assert rates.source_supply_url == SUPPLY_URL
-    assert rates.source_delivery_url == DELIVERY_URL
-    assert all(
-        call[1]["headers"] == {"Cookie": ".SEGMENT=nh"} for call in session.calls
-    )
+    assert rates.source_supply_url == f"{SUPPLY_URL}/nh"
+    assert rates.source_delivery_url == f"{DELIVERY_URL}/nh"
+    assert [call[0] for call in session.calls] == [
+        f"{SUPPLY_URL}/nh",
+        f"{DELIVERY_URL}/nh",
+    ]
+    assert all(call[1]["headers"] == {} for call in session.calls)
 
 
 def test_ct_fetch_uses_suffixed_urls_without_cookie() -> None:
@@ -120,14 +123,17 @@ def test_wma_fetch_uses_suffixed_urls_without_cookie() -> None:
     assert rates.supply.rate == Decimal("0.15934")
 
 
-def test_nh_fetch_cookie_comes_from_tariff_source(
+def test_nh_fetch_urls_come_from_tariff_source(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    """HTTP cookie comes from TariffSource, not a hard-coded territory string."""
+    """NH URLs come from TariffSource, not a hard-coded territory string."""
     monkeypatch.setitem(
         TARIFF_SOURCES,
         ("nh", "r"),
-        TariffSource(SUPPLY_URL, DELIVERY_URL, segment="completely-different-segment"),
+        TariffSource(
+            "https://example.test/custom-supply",
+            "https://example.test/custom-delivery",
+        ),
     )
     session = FakeSession(
         [
@@ -137,14 +143,15 @@ def test_nh_fetch_cookie_comes_from_tariff_source(
     )
     rates = asyncio.run(_client(session).async_get_rates())
     assert rates.territory == "nh"
-    assert all(
-        call[1]["headers"] == {"Cookie": ".SEGMENT=completely-different-segment"}
-        for call in session.calls
-    )
+    assert [call[0] for call in session.calls] == [
+        "https://example.test/custom-supply",
+        "https://example.test/custom-delivery",
+    ]
+    assert all(call[1]["headers"] == {} for call in session.calls)
 
 
-def test_support_dispatch_uses_logical_territory_not_cookie_value() -> None:
-    """Unsupported logical territories fail even if a CT-looking cookie would exist."""
+def test_support_dispatch_uses_logical_territory() -> None:
+    """Unsupported logical territories fail before a source can be selected."""
     with pytest.raises(EversourceUnsupportedTariffError):
         asyncio.run(
             _client(FakeSession([]), territory="ct", rate_class="r").async_get_rates()
@@ -286,3 +293,25 @@ def test_async_fetch_direct_calls() -> None:
     )
     assert content2 == "header content"
     assert session_with_headers.calls[0][1]["headers"] == {"Cookie": ".SEGMENT=nh"}
+
+
+def test_async_fetch_logs_safe_page_metadata(caplog: pytest.LogCaptureFixture) -> None:
+    page = "<html><title>NH tariff</title><body>Rate R</body></html>"
+    session = FakeSession(
+        [FakeResponse(200, page, url="https://example.test/final-tariff")]
+    )
+    caplog.set_level(logging.DEBUG, logger="custom_components.eversource_rates.api")
+
+    content = asyncio.run(
+        _client(session)._async_fetch(
+            "https://example.test/original-tariff",
+            expected_markers=("New Hampshire", "Rate R"),
+        )
+    )
+
+    assert content == page
+    assert "final_url=https://example.test/final-tariff" in caplog.text
+    assert "title='NH tariff'" in caplog.text
+    assert "'New Hampshire': False" in caplog.text
+    assert "'Rate R': True" in caplog.text
+    assert page not in caplog.text

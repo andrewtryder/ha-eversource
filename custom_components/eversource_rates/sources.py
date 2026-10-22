@@ -18,10 +18,14 @@ class TariffSource:
     time_zone: ZoneInfo = EVERSOURCE_TIME_ZONE
 
 
-# NH keeps the proven generic URLs + segment cookie. CT uses territory-suffixed
-# public URLs without a cookie (cookie-only generic URLs were unreliable for CT).
+# Every supported tariff uses its state-specific public URL. This avoids relying
+# on Sitefinity's unstable generic-page personalization cookies.
 TARIFF_SOURCES: dict[tuple[str, str], TariffSource] = {
-    ("nh", "r"): TariffSource(SUPPLY_URL, DELIVERY_URL, segment="nh"),
+    ("nh", "r"): TariffSource(
+        f"{SUPPLY_URL}/nh",
+        f"{DELIVERY_URL}/nh",
+        segment=None,
+    ),
     ("ct", "1"): TariffSource(
         f"{SUPPLY_URL}/ct",
         f"{DELIVERY_URL}/ct",

@@ -8,8 +8,9 @@ from datetime import UTC, datetime
 from decimal import Decimal
 
 import aiohttp
+from bs4 import BeautifulSoup
 
-from .const import REQUEST_TIMEOUT_SECONDS
+from .const import REQUEST_TIMEOUT_SECONDS, TERRITORIES
 from .models import EversourceRates
 from .parsers import EversourceParseError, parse_tariff
 from .sources import TARIFF_SOURCES, TariffSource, get_tariff_source
@@ -78,7 +79,11 @@ class EversourceClient:
         return self._selection
 
     async def _async_fetch(
-        self, url: str, *, headers: dict[str, str] | None = None
+        self,
+        url: str,
+        *,
+        headers: dict[str, str] | None = None,
+        expected_markers: tuple[str, ...] = (),
     ) -> str:
         """Retrieve raw HTML from a tariff URL."""
         try:
@@ -94,11 +99,20 @@ class EversourceClient:
                         f"HTTP {response.status} retrieving tariff page"
                     )
                 text = await response.text()
+                soup = BeautifulSoup(text, "html.parser")
+                title = soup.title.get_text(" ", strip=True) if soup.title else None
+                markers = {
+                    marker: marker.lower() in text.lower()
+                    for marker in expected_markers
+                }
                 _LOGGER.debug(
-                    "Retrieved tariff page from %s: status=%d, bytes=%d",
-                    url,
+                    "Retrieved tariff page: final_url=%s, status=%d, bytes=%d, "
+                    "title=%r, expected_markers=%s",
+                    getattr(response, "url", url),
                     response.status,
                     len(text.encode("utf-8")),
+                    title,
+                    markers,
                 )
                 return text
         except TimeoutError as err:
@@ -122,9 +136,19 @@ class EversourceClient:
             if source.segment is not None
             else None
         )
+        territory_marker = TERRITORIES[selection.territory].name
+        rate_marker = f"Rate {selection.rate_class}"
         supply_html, delivery_html = await asyncio.gather(
-            self._async_fetch(source.supply_url, headers=headers),
-            self._async_fetch(source.delivery_url, headers=headers),
+            self._async_fetch(
+                source.supply_url,
+                headers=headers,
+                expected_markers=(territory_marker, rate_marker, "supply"),
+            ),
+            self._async_fetch(
+                source.delivery_url,
+                headers=headers,
+                expected_markers=(territory_marker, rate_marker, "delivery"),
+            ),
         )
         as_of = datetime.now(source.time_zone).date()
         try:
