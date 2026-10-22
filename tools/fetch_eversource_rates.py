@@ -104,7 +104,7 @@ def validate_rates(rates: TariffRates) -> None:
 
 
 async def fetch_eversource_rates(**_: object) -> TariffRates:
-    """Fetch without authentication using only Cookie: .SEGMENT=nh."""
+    """Fetch unauthenticated NH Rate R data from public state-specific HTML URLs."""
     async with aiohttp.ClientSession() as session:
         client = EversourceClient(
             session,

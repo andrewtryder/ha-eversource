@@ -17,7 +17,7 @@ Production code under `custom_components/eversource_rates/` is authoritative. Th
 | Supply model | Eversource default / basic service from public tariff pages |
 | Timezone | All service territories evaluate tariff calendar dates in Eastern Time (`America/New_York`) |
 | Tariff refresh schedule | Every **24 hours** by default; configurable via Options (6 / 12 / 24 / 48 / 72 / 168 hours) |
-| Authentication | None — unauthenticated public HTTPS endpoints; Sitefinity audience cookie `.SEGMENT=nh` for NH |
+| Authentication | None — unauthenticated public HTTPS endpoints with state-specific URL suffixes |
 
 ### Repository schedules
 
@@ -82,7 +82,7 @@ Public delivery URL ─┘              │
                       Primary + diagnostic sensors
 ```
 
-1. **Fetch** — Asynchronous concurrent `GET` of the public supply and delivery tariff pages. NH uses generic URLs with `.SEGMENT=nh` cookie; CT, WMA, and EMA use territory-suffixed URLs (`/ct`, `/wma`, `/ema`).
+1. **Fetch** — Asynchronous concurrent `GET` of the public supply and delivery tariff pages. Each supported territory uses a state-specific URL suffix (`/nh`, `/ct`, `/wma`, or `/ema`) without a personalization cookie.
 2. **Timezone Evaluation** — Effective date intervals are evaluated in Eastern Time (`America/New_York`), ensuring consistent period selection regardless of the Home Assistant host system timezone (such as UTC).
 3. **Parse** — Territory parsers extract supply and delivery tables into exact `Decimal` values. Missing required riders, malformed units, conflicting duplicates, or mismatching delivery totals fail closed.
 4. **Coordinate** — `DataUpdateCoordinator` handles scheduling and retains prior rate data when a refresh encounters an error (`UpdateFailed`). Successful refreshes publish an updated `retrieved_at` timestamp.
