@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.4.2](https://github.com/andrewtryder/ha-eversource/compare/v0.4.1...v0.4.2) (2026-10-26)
+
+
+### Bug Fixes
+
+* clear session cookies to avoid sitefinity personalization failures ([#75](https://github.com/andrewtryder/ha-eversource/issues/75)) ([bcd399b](https://github.com/andrewtryder/ha-eversource/commit/bcd399baf3d9968084acd0337e09c518da64c667))
+
 ## [0.4.1](https://github.com/andrewtryder/ha-eversource/compare/v0.4.0...v0.4.1) (2026-10-22)
 
 
