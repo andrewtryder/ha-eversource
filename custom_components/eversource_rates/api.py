@@ -38,6 +38,13 @@ class EversourceTariffParseError(EversourceError):
     """A tariff page was malformed, missing, or implausible."""
 
 
+def _clear_session_cookies(session: aiohttp.ClientSession) -> None:
+    """Clear cookies for eversource.com to avoid Sitefinity personalization failures."""
+    cookie_jar = getattr(session, "cookie_jar", None)
+    if cookie_jar is not None and hasattr(cookie_jar, "clear_domain"):
+        cookie_jar.clear_domain("eversource.com")
+
+
 class EversourceClient:
     """Retrieve public tariff pages for one logical tariff selection."""
 
@@ -86,6 +93,7 @@ class EversourceClient:
         expected_markers: tuple[str, ...] = (),
     ) -> str:
         """Retrieve raw HTML from a tariff URL."""
+        _clear_session_cookies(self._session)
         try:
             timeout = aiohttp.ClientTimeout(total=REQUEST_TIMEOUT_SECONDS)
             async with self._session.get(
@@ -119,6 +127,8 @@ class EversourceClient:
             raise EversourceConnectionError("Timed out retrieving tariff page") from err
         except aiohttp.ClientError as err:
             raise EversourceConnectionError("Unable to retrieve tariff page") from err
+        finally:
+            _clear_session_cookies(self._session)
 
     async def async_get_rates(self) -> EversourceRates:
         """Fetch supply and delivery concurrently and validate the parsed tariff."""
@@ -138,18 +148,22 @@ class EversourceClient:
         )
         territory_marker = TERRITORIES[selection.territory].name
         rate_marker = f"Rate {selection.rate_class}"
-        supply_html, delivery_html = await asyncio.gather(
-            self._async_fetch(
-                source.supply_url,
-                headers=headers,
-                expected_markers=(territory_marker, rate_marker, "supply"),
-            ),
-            self._async_fetch(
-                source.delivery_url,
-                headers=headers,
-                expected_markers=(territory_marker, rate_marker, "delivery"),
-            ),
-        )
+        _clear_session_cookies(self._session)
+        try:
+            supply_html, delivery_html = await asyncio.gather(
+                self._async_fetch(
+                    source.supply_url,
+                    headers=headers,
+                    expected_markers=(territory_marker, rate_marker, "supply"),
+                ),
+                self._async_fetch(
+                    source.delivery_url,
+                    headers=headers,
+                    expected_markers=(territory_marker, rate_marker, "delivery"),
+                ),
+            )
+        finally:
+            _clear_session_cookies(self._session)
         as_of = datetime.now(source.time_zone).date()
         try:
             supply, delivery = parse_tariff(

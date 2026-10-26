@@ -315,3 +315,43 @@ def test_async_fetch_logs_safe_page_metadata(caplog: pytest.LogCaptureFixture) -
     assert "'New Hampshire': False" in caplog.text
     assert "'Rate R': True" in caplog.text
     assert page not in caplog.text
+
+
+def test_clear_session_cookies_purges_eversource_domain() -> None:
+    class FakeCookieJar:
+        def __init__(self) -> None:
+            self.cleared: list[str] = []
+
+        def clear_domain(self, domain: str) -> None:
+            self.cleared.append(domain)
+
+    session = FakeSession([FakeResponse(200, "page")])
+    jar = FakeCookieJar()
+    session.cookie_jar = jar
+
+    client = _client(session)
+    content = asyncio.run(client._async_fetch("https://example.com/test"))
+    assert content == "page"
+    assert jar.cleared == ["eversource.com", "eversource.com"]
+
+
+def test_async_get_rates_clears_cookies_around_fetch() -> None:
+    class FakeCookieJar:
+        def __init__(self) -> None:
+            self.cleared: list[str] = []
+
+        def clear_domain(self, domain: str) -> None:
+            self.cleared.append(domain)
+
+    session = FakeSession(
+        [
+            FakeResponse(200, (FIXTURES / "sanitized_supply.html").read_text()),
+            FakeResponse(200, (FIXTURES / "sanitized_delivery.html").read_text()),
+        ]
+    )
+    jar = FakeCookieJar()
+    session.cookie_jar = jar
+
+    rates = asyncio.run(_client(session).async_get_rates())
+    assert str(rates.total_variable_rate) == "0.25918"
+    assert jar.cleared.count("eversource.com") >= 2
