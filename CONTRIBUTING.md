@@ -27,7 +27,13 @@ uv run --locked pre-commit install
 
 ## Validation
 
-Run the validation suite used by CI before opening a pull request:
+The portfolio standard validation interface executes the entire local test, linting, and hygiene contract:
+
+```bash
+./scripts/validate-local.sh
+```
+
+Individual checks can also be run manually:
 
 ```bash
 uv run --locked ruff check .
