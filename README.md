@@ -152,6 +152,22 @@ To remove Eversource Rates:
 3. On the **Eversource Rates** card, click the menu (**⋮**) and select **Delete**.
 4. If installed via HACS, you can then remove it from the HACS integration list.
 
+## Development
+
+This repository uses [`uv`](https://docs.astral.sh/uv/) for development dependency management and validation.
+
+```bash
+# Install dependencies into virtual environment
+uv sync --locked
+
+# Run linting and formatting checks
+uv run --locked ruff check .
+uv run --locked ruff format --check .
+
+# Run test suite with offline network isolation
+uv run --locked pytest --disable-socket --allow-unix-socket -p no:cacheprovider
+```
+
 ## Notes
 
 Rates are parsed from public Eversource pages using exact decimal arithmetic. If a public page becomes unavailable or changes in an unsafe way, the integration fails closed rather than publishing a fabricated price. Developers can use `tools/fetch_eversource_rates.py` for a manual live fetch/parse check against the public New Hampshire tariff pages.
