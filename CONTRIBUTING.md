@@ -13,21 +13,16 @@ Docker and a devcontainer are intentionally not required for this project.
 
 ## Local setup
 
-Create and activate a virtual environment, upgrade pip, and install dependencies:
+Install dependencies into a managed virtual environment using `uv`:
 
 ```bash
-python3.14 -m venv .venv
-source .venv/bin/activate
-python -m pip install --upgrade pip
-pip install -r requirements.txt -r requirements_test.txt
+uv sync --locked
 ```
-
-*(On Windows, activate with `.venv\Scripts\activate`.)*
 
 Optionally install pre-commit git hooks:
 
 ```bash
-pre-commit install
+uv run --locked pre-commit install
 ```
 
 ## Validation
@@ -35,22 +30,22 @@ pre-commit install
 Run the validation suite used by CI before opening a pull request:
 
 ```bash
-ruff check .
-ruff format --check .
-PYTHONPATH=. pytest
+uv run --locked ruff check .
+uv run --locked ruff format --check .
+uv run --locked pytest --disable-socket --allow-unix-socket -p no:cacheprovider
 ```
 
 ### Purpose of each check
 
-- **Ruff linting (`ruff check .`)**: Checks code style, imports, and lint rules defined in `pyproject.toml`.
-- **Ruff format check (`ruff format --check .`)**: Verifies code formatting conforms to repo conventions without altering files.
-- **Unit and integration tests (`PYTHONPATH=. pytest`)**: Executes the test suite against local fixtures and mock Home Assistant components.
+- **Ruff linting (`uv run --locked ruff check .`)**: Checks code style, imports, and lint rules defined in `pyproject.toml`.
+- **Ruff format check (`uv run --locked ruff format --check .`)**: Verifies code formatting conforms to repo conventions without altering files.
+- **Unit and integration tests (`uv run --locked pytest ...`)**: Executes the test suite against local fixtures and mock Home Assistant components with offline network isolation.
 - **Coverage enforcement**: `pyproject.toml` configures `--cov-fail-under=96`, failing the test run if total line coverage drops below 96%.
 
 If you have pre-commit installed, you can also run the full local hook suite:
 
 ```bash
-pre-commit run --all-files
+uv run --locked pre-commit run --all-files
 ```
 
 ### Formatting and auto-fixing
@@ -58,8 +53,8 @@ pre-commit run --all-files
 Before running validation, you can automatically fix format and lint issues:
 
 ```bash
-ruff check . --fix
-ruff format .
+uv run --locked ruff check . --fix
+uv run --locked ruff format .
 ```
 
 Always rerun the validation commands above after applying automatic fixes.
