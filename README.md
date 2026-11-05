@@ -1,48 +1,45 @@
 # Eversource Rates for Home Assistant
 
-[![Validate](https://github.com/andrewtryder/ha-eversource/actions/workflows/validate.yml/badge.svg?branch=main)](https://github.com/andrewtryder/ha-eversource/actions/workflows/validate.yml)
-[![GitHub release](https://img.shields.io/github/v/release/andrewtryder/ha-eversource)](https://github.com/andrewtryder/ha-eversource/releases)
-[![License](https://img.shields.io/github/license/andrewtryder/ha-eversource)](LICENSE)
+<img src="custom_components/eversource_rates/brand/icon.png" alt="Eversource Rates integration icon" width="100">
 
-[![Open in HACS](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=andrewtryder&repository=ha-eversource&category=integration)
+See public Eversource electricity rates in Home Assistant and use the current price to estimate your variable electricity costs.
 
-Eversource Rates is an unofficial Home Assistant integration that retrieves public **Eversource electricity** tariffs, exposes a current **USD/kWh** price for the Home Assistant Energy dashboard, and optionally monitors **municipality-level public outages**.
+[![Latest release](https://img.shields.io/github/v/release/andrewtryder/ha-eversource?style=flat-square)](https://github.com/andrewtryder/ha-eversource/releases/latest)
+[![Validation on main](https://img.shields.io/github/actions/workflow/status/andrewtryder/ha-eversource/validate.yml?branch=main&style=flat-square&label=validation)](https://github.com/andrewtryder/ha-eversource/actions/workflows/validate.yml)
+[![License](https://img.shields.io/github/license/andrewtryder/ha-eversource?style=flat-square)](LICENSE)
+[![HACS custom integration](https://img.shields.io/badge/HACS-Custom-orange?style=flat-square)](https://my.home-assistant.io/redirect/hacs_repository/?owner=andrewtryder&repository=ha-eversource&category=integration)
 
-For energy monitoring, it provides **tariff price data only**. You still need a separate cumulative **kWh** consumption sensor from Sense, a smart meter, an energy monitor, or another Home Assistant integration.
+## What can I do with it?
 
-## Support
+- Show the current supply, delivery, and combined variable electricity rates.
+- Use the combined rate with a separate energy sensor in the Home Assistant Energy dashboard.
+- Optionally monitor public, municipality-level outage reports. This does not indicate whether your own home has power.
 
-| Territory / rate | Status |
+No Eversource login, account number, or API key is required.
+
+## Requirements and compatibility
+
+You need Home Assistant with HACS and a supported Eversource electricity territory and rate:
+
+| Territory | Supported residential rate |
 | --- | --- |
-| New Hampshire — Residential Rate R | **Supported and maintainer-tested** |
-| Connecticut — Rate 1 (Residential) | **Supported** from public tariff data |
-| Western Massachusetts — R1 Non-Heating | **Supported** from public tariff data (Fixed / Monthly Variable Basic Service) |
-| Eastern Massachusetts — R1 Non-Heating | **Supported** from public tariff data (Fixed / Monthly Variable Basic Service + service area) |
+| New Hampshire | Rate R (maintainer-tested) |
+| Connecticut | Rate 1 |
+| Western Massachusetts | R1 Non-Heating, Fixed or Monthly Variable Basic Service |
+| Eastern Massachusetts | R1 Non-Heating, Fixed or Monthly Variable Basic Service, with service area |
 
-**Electricity only.** Natural gas is not supported. The current integration also assumes **Eversource default service supply**; third-party supplier pricing, time-of-use tariffs (including CT Rate 7), heat-pump rates, and assistance rates are not yet supported.
+The integration assumes Eversource default-service supply. Natural gas, third-party supplier prices, time-of-use rates including Connecticut Rate 7, heat-pump rates, and assistance rates are not supported.
 
-## What it does
+## Install with HACS
 
-- Checks public Eversource tariff pages daily by default; the interval can be changed from the integration's Configure menu.
-- Requires no Eversource login, account number, API key, or private account data.
-- Calculates the all-in **variable** electricity rate: supply + per-kWh delivery charges and credits.
-- Keeps the fixed monthly customer charge separate so it is not incorrectly applied as a per-kWh price.
+1. In HACS, add `https://github.com/andrewtryder/ha-eversource` as a custom repository in the **Integration** category, or use the HACS badge above.
+2. Install **Eversource Rates** and restart Home Assistant if prompted.
 
-## Install and configure
+## First-time setup
 
-Use the **Open in HACS** button above, install **Eversource Rates**, and restart Home Assistant if prompted. If needed, add this repository to HACS as a custom repository of type **Integration**.
-
-Then go to **Settings → Devices & services → Add integration → Eversource Rates** and select your service territory and electric rate class.
-
-### Finding your rate class
-
-Look at the detailed **Delivery** section of your Eversource electric bill, typically on page 2. The rate designation is usually shown near the delivery-charge breakdown.
-
-- New Hampshire residential: look for **Rate R** or **Rate R Residential Services**.
-- Connecticut residential: look for **Rate 1**.
-- Western Massachusetts residential: look for **R1** (Residential, Non-Heating), then choose Fixed or Monthly Variable Basic Service.
-- Eastern Massachusetts residential: look for **R1** (Residential, Non-Heating), choose Fixed or Monthly Variable Basic Service, then select Greater Boston / Cambridge / South Shore or Cape Cod / Martha's Vineyard.
-Your **rate class** is different from your electricity **supplier**. This integration currently uses Eversource default-service supply pricing.
+1. Go to **Settings → Devices & services → Add integration** and select **Eversource Rates**.
+2. Choose your territory and electric rate class. Massachusetts customers also choose a supply plan; Eastern Massachusetts customers select their service area.
+3. If unsure of your rate, look in the detailed **Delivery** section of your electric bill: NH residential is Rate R, Connecticut residential is Rate 1, and the supported Massachusetts residential rate is R1 Non-Heating. Your rate class is different from your electricity supplier.
 
 ## Home Assistant Energy dashboard
 
@@ -60,118 +57,34 @@ To configure it:
 
 Do not use only the supply or delivery sensor; the total-rate sensor combines both. The fixed monthly customer charge is intentionally excluded, so Home Assistant's calculated cost represents **variable electricity cost**, not an exact reproduction of the final utility bill.
 
-## Main entities
+## What you'll see in Home Assistant
 
-New Hampshire Rate R keeps short entity IDs. Connecticut Rate 1 uses territory-prefixed IDs such as `sensor.eversource_ct_1_total_electricity_rate`. Massachusetts R1 includes the supply plan (and for EMA, service area), such as `sensor.eversource_wma_r1_fixed_total_electricity_rate` or `sensor.eversource_ema_r1_fixed_cape_total_electricity_rate`.
+The total electricity rate combines supply and variable delivery charges in USD/kWh. Supply, delivery, and fixed monthly customer charge sensors are also available; individual delivery components are disabled by default. Entity IDs vary by territory and plan.
 
-| Entity (NH Rate R) | Purpose |
-| --- | --- |
-| `sensor.eversource_total_electricity_rate` | Supply + variable delivery in USD/kWh; use this in the Energy dashboard |
-| `sensor.eversource_supply_rate` | Current Eversource default-service supply price |
-| `sensor.eversource_delivery_rate` | Sum of variable Eversource delivery charges |
-| `sensor.eversource_customer_charge` | Fixed monthly customer charge; not part of the per-kWh Energy price |
+Enable optional [municipality outage monitoring](docs/outages.md) through **Settings → Devices & services → Eversource Rates → Configure**. It reports aggregate customers without power in a selected municipality, not the status of a particular address.
 
-Individual delivery components are available as disabled-by-default diagnostic entities.
+Rates refresh every 24 hours by default. In **Configure**, choose an interval from 6 hours to 7 days; saving an interval reloads the integration and refreshes it immediately.
 
-## Optional municipality outage monitoring
+## Common problems and troubleshooting
 
-Eversource Rates can optionally monitor municipality-level public outage reports published on Eversource's outage map.
+- Confirm that the territory, rate class, and Massachusetts supply plan match your bill.
+- If a rate is unavailable, check Home Assistant logs and try reloading the integration. The [troubleshooting guide](docs/troubleshooting.md) explains debug logging and refreshes.
+- Outage data applies to a municipality, not an individual meter; see [outage monitoring](docs/outages.md).
 
-- **Configure via Options**: Enable in **Settings → Devices & services → Eversource Rates → Configure** and select your town or city.
-- **Aggregate only**: Indicates whether Eversource reports any customers without power in the selected municipality; it does *not* monitor your specific home or service address.
-- **Entities created**: A binary sensor (`binary_sensor.<id>_outage`, `on` when customers out > 0) and sensors for customers out and percent out.
+## Limitations, safety, and privacy
 
-For full details, see [Municipality Outage Monitoring](docs/outages.md).
+This integration supplies **price data only**. A separate cumulative grid-consumption sensor in kWh is required for the Energy dashboard. The estimate excludes the fixed monthly customer charge and is not a complete electricity bill. Home Assistant does not retroactively recalculate historical energy costs when rates change. Effective dates use Eastern Time.
 
-## Data updates and schedules
+If a public source becomes unavailable or changes in a way the integration cannot interpret safely, it fails closed rather than publishing a fabricated price.
 
-- **Tariff update interval**: Checks public Eversource tariff pages **every 24 hours** by default.
-- **Configurable interval**: Open **Settings → Devices & services → Eversource Rates → Configure** to choose:
-  - 6 hours
-  - 12 hours
-  - 24 hours (default)
-  - 48 hours
-  - 72 hours
-  - 168 hours (7 days)
-- **Immediate refresh on save**: Changing and saving the update interval automatically reloads the integration and triggers an immediate tariff refresh.
-- **Repository schedules**: For clarity, this repository has three distinct schedules:
-  1. *Tariff refresh*: 24-hour default in Home Assistant runtime (with 6h–168h user options).
-  2. *GitHub Actions validation*: Runs daily in CI against local sanitized test fixtures (not a live scrape).
-  3. *Dependabot*: Checks for dependency updates weekly on Mondays.
+## More documentation
 
-## Troubleshooting
+- [Troubleshooting](docs/troubleshooting.md) and [outage monitoring](docs/outages.md)
+- [Contributing and development](CONTRIBUTING.md)
+- [Integration design](docs/hacs-integration-design.md)
 
-### Enabling debug logging
+## Support and license
 
-To view detailed fetch and parse diagnostics, enable debug logging either via the UI:
+Report issues on [GitHub](https://github.com/andrewtryder/ha-eversource/issues). To uninstall, first remove the price sensor from the Energy dashboard, then delete the integration under **Settings → Devices & services** and remove it from HACS if desired.
 
-1. Go to **Settings → Devices & services**.
-2. Find the **Eversource Rates** card.
-3. Click the menu (**⋮**) and select **Enable debug logging**.
-
-Or add to your `configuration.yaml`:
-
-```yaml
-logger:
-  logs:
-    custom_components.eversource_rates: debug
-```
-
-### Forcing an immediate refresh
-
-Enabling debug logging does not by itself trigger a tariff refresh. To see log output immediately:
-
-1. Enable debug logging (via the steps above).
-2. Click the menu (**⋮**) on the Eversource Rates card and select **Reload**.
-3. Setup will run an immediate coordinator refresh.
-
-When retrieval succeeds, you will see debug entries similar to:
-
-```text
-DEBUG (MainThread) [custom_components.eversource_rates.api] Refreshing tariff for nh/r
-DEBUG (MainThread) [custom_components.eversource_rates.api] Retrieved tariff page from ...: status=200, bytes=...
-DEBUG (MainThread) [custom_components.eversource_rates.api] Parsed Eversource nh r tariff with 6 delivery components: supply=0.10444, effective=2026-08-01
-```
-
-If you do not see either a `Parsed Eversource ...` message or an `UpdateFailed` warning after reloading, check that debug logging is enabled for the `custom_components.eversource_rates` namespace.
-
-## Known limitations
-
-- **Electricity only**: Natural gas tariffs are not supported.
-- **Default service only**: Assumes Eversource standard default Basic Service supply. Third-party competitive energy suppliers, electric vehicle / time-of-day tariffs (including CT Rate 7), heat-pump discounts, and financial hardship/assistance rates are not supported.
-- **Timezone**: All Eversource territories operate in Eastern Time (`America/New_York`). Tariff effective dates are evaluated using Eastern Time, regardless of the host system or container timezone.
-- **Price-only integration**: Does not monitor real-time consumption; a separate cumulative grid energy sensor (kWh) is required for the Home Assistant Energy dashboard.
-- **Historical data**: Home Assistant applies current rates to energy recorded going forward; past energy costs in the Energy dashboard are not retroactively recalculated.
-
-## Uninstalling
-
-To remove Eversource Rates:
-
-1. Open **Settings → Dashboards → Energy** and remove `sensor.eversource_total_electricity_rate` from your electricity grid configuration.
-2. Go to **Settings → Devices & services**.
-3. On the **Eversource Rates** card, click the menu (**⋮**) and select **Delete**.
-4. If installed via HACS, you can then remove it from the HACS integration list.
-
-## Development
-
-This repository uses [`uv`](https://docs.astral.sh/uv/) for development dependency management and validation.
-
-```bash
-# Install dependencies into virtual environment
-uv sync --locked
-
-# Run linting and formatting checks
-uv run --locked ruff check .
-uv run --locked ruff format --check .
-
-# Run test suite with offline network isolation
-uv run --locked pytest --disable-socket --allow-unix-socket -p no:cacheprovider
-```
-
-## Notes
-
-Rates are parsed from public Eversource pages using exact decimal arithmetic. If a public page becomes unavailable or changes in an unsafe way, the integration fails closed rather than publishing a fabricated price. Developers can use `tools/fetch_eversource_rates.py` for a manual live fetch/parse check against the public New Hampshire tariff pages.
-
-This project is unofficial and is not affiliated with, endorsed by, or sponsored by Eversource.
-
-For development details, see [CONTRIBUTING.md](CONTRIBUTING.md) and [docs/hacs-integration-design.md](docs/hacs-integration-design.md).
+This unofficial community project is not affiliated with, endorsed by, or sponsored by Eversource. See the [license](LICENSE).
