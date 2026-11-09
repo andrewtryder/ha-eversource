@@ -19,7 +19,7 @@ No Eversource login, account number, or API key is required.
 
 ## Requirements and compatibility
 
-You need Home Assistant with HACS and a supported Eversource electricity territory and rate:
+You need Home Assistant with HACS (or the built-in Home Assistant Marketplace in **2026.11+**) and a supported Eversource electricity territory and rate:
 
 | Territory | Supported residential rate |
 | --- | --- |
@@ -30,9 +30,11 @@ You need Home Assistant with HACS and a supported Eversource electricity territo
 
 The integration assumes Eversource default-service supply. Natural gas, third-party supplier prices, time-of-use rates including Connecticut Rate 7, heat-pump rates, and assistance rates are not supported.
 
-## Install with HACS
+## Install with HACS or Home Assistant Marketplace
 
-1. In HACS, add `https://github.com/andrewtryder/ha-eversource` as a custom repository in the **Integration** category, or use the HACS badge above.
+[![Open your Home Assistant instance and open a repository inside the Home Assistant Community Store.](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=andrewtryder&repository=ha-eversource&category=integration)
+
+1. Click the **Open your Home Assistant instance** button above (backwards compatible: opens **HACS** on earlier versions and the built-in **Home Assistant Marketplace** on **2026.11+**), or manually add `https://github.com/andrewtryder/ha-eversource` as a custom repository in the **Integration** category.
 2. Install **Eversource Rates** and restart Home Assistant if prompted.
 
 ## First-time setup
