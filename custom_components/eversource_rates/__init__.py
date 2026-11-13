@@ -37,7 +37,11 @@ else:
 
     type EversourceConfigEntry = ConfigEntry[EversourceRuntimeData]
 
-    PLATFORMS: tuple[Platform, ...] = (Platform.SENSOR, Platform.BINARY_SENSOR)
+    PLATFORMS: tuple[Platform, ...] = (
+        Platform.SENSOR,
+        Platform.BINARY_SENSOR,
+        Platform.EVENT,
+    )
 
     async def async_setup_entry(
         hass: HomeAssistant, entry: EversourceConfigEntry

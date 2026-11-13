@@ -21,6 +21,7 @@ from .binary_sensor import outage_device_info
 from .const import DOMAIN, RATE_CLASS_NAMES, TERRITORIES
 from .coordinator import EversourceRatesCoordinator
 from .entity_ids import sensor_object_id
+from .models import EversourceRates
 from .outage_coordinator import EversourceOutageCoordinator
 from .tariffs import SERVICE_AREA_NAMES, SUPPLY_PLAN_NAMES
 
@@ -79,6 +80,31 @@ OUTAGE_SENSOR_DESCRIPTIONS = (
 )
 
 
+def rate_device_info(rates: EversourceRates) -> DeviceInfo:
+    """Return the shared tariff device for sensors and activity events."""
+    name_parts = [
+        f"Eversource {TERRITORIES[rates.territory].name}",
+        RATE_CLASS_NAMES[rates.rate_class],
+    ]
+
+    if rates.supply_plan:
+        name_parts.append(SUPPLY_PLAN_NAMES[rates.supply_plan])
+    if rates.service_area:
+        name_parts.append(SERVICE_AREA_NAMES[rates.service_area])
+    device_id_parts = [rates.territory, rates.rate_class]
+    if rates.supply_plan:
+        device_id_parts.append(rates.supply_plan)
+    if rates.service_area:
+        device_id_parts.append(rates.service_area)
+    return DeviceInfo(
+        identifiers={(DOMAIN, "_".join(device_id_parts))},
+        name=" — ".join(name_parts),
+        manufacturer="Eversource",
+        model=RATE_CLASS_NAMES[rates.rate_class],
+        configuration_url=rates.source_supply_url,
+    )
+
+
 class EversourceSensor(CoordinatorEntity[EversourceRatesCoordinator], SensorEntity):
     """A primary current-tariff sensor."""
 
@@ -119,28 +145,7 @@ class EversourceSensor(CoordinatorEntity[EversourceRatesCoordinator], SensorEnti
     @property
     def device_info(self) -> DeviceInfo:
         """Return the logical Eversource tariff device."""
-        rates = self.coordinator.data
-        name_parts = [
-            f"Eversource {TERRITORIES[rates.territory].name}",
-            RATE_CLASS_NAMES[rates.rate_class],
-        ]
-
-        if rates.supply_plan:
-            name_parts.append(SUPPLY_PLAN_NAMES[rates.supply_plan])
-        if rates.service_area:
-            name_parts.append(SERVICE_AREA_NAMES[rates.service_area])
-        device_id_parts = [rates.territory, rates.rate_class]
-        if rates.supply_plan:
-            device_id_parts.append(rates.supply_plan)
-        if rates.service_area:
-            device_id_parts.append(rates.service_area)
-        return DeviceInfo(
-            identifiers={(DOMAIN, "_".join(device_id_parts))},
-            name=" — ".join(name_parts),
-            manufacturer="Eversource",
-            model=RATE_CLASS_NAMES[rates.rate_class],
-            configuration_url=rates.source_supply_url,
-        )
+        return rate_device_info(self.coordinator.data)
 
     @property
     def native_value(self) -> Decimal:

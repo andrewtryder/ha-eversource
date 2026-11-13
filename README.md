@@ -67,6 +67,12 @@ Enable optional [municipality outage monitoring](docs/outages.md) through **Sett
 
 Rates refresh every 24 hours by default. In **Configure**, choose an interval from 6 hours to 7 days; saving an interval reloads the integration and refreshes it immediately.
 
+### Device activity history
+
+The integration creates a **Rate activity** event entity on the tariff device. Each rate check is recorded in the device's **Activity** panel, even if the prices are unchanged. Changes, check failures, and recovery events are recorded separately. This works without enabling debug logging.
+
+When municipality outage monitoring is configured, an **Outage activity** event entity appears on the municipality's separate outage device. Each five-minute outage check creates an activity event (including an all-clear result), and a change in the reported customer count is identified as an outage detected, cleared, or count changed. These are *municipality-wide* reports, not evidence of power at your own home. With a five-minute outage interval, expect roughly 288 activity events per day per monitored municipality. Home Assistant's Recorder retention and exclusion settings apply to these event entities.
+
 ## Common problems and troubleshooting
 
 - Confirm that the territory, rate class, and Massachusetts supply plan match your bill.
