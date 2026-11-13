@@ -73,9 +73,10 @@ async def test_rate_activity_tracks_unchanged_changed_failure_and_recovery(
         assert state.attributes["message"] == (
             "Initial Eversource rates check succeeded"
         )
-        assert registry.async_get(event_id).device_id == registry.async_get(
-            "sensor.eversource_total_electricity_rate"
-        ).device_id
+        assert (
+            registry.async_get(event_id).device_id
+            == registry.async_get("sensor.eversource_total_electricity_rate").device_id
+        )
 
         # A successful poll is visible even when tariff values are unchanged.
         first_timestamp = state.state
@@ -171,9 +172,10 @@ async def test_outage_activity_records_checks_changes_and_failures(
         state = hass.states.get(event_id)
         assert state.attributes["event_type"] == "outage_checked"
         assert state.attributes["customers_out"] == 0
-        assert registry.async_get(event_id).device_id == registry.async_get(
-            "binary_sensor.eversource_concord_outage"
-        ).device_id
+        assert (
+            registry.async_get(event_id).device_id
+            == registry.async_get("binary_sensor.eversource_concord_outage").device_id
+        )
 
         first_timestamp = state.state
         await entry.runtime_data.outage_coordinator.async_refresh()
