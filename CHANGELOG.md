@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.5.0](https://github.com/andrewtryder/ha-eversource/compare/v0.4.2...v0.5.0) (2026-11-13)
+
+
+### Features
+
+* show routine rate and outage checks in device activity ([#88](https://github.com/andrewtryder/ha-eversource/issues/88)) ([c0cb263](https://github.com/andrewtryder/ha-eversource/commit/c0cb26354272878db101d2e8154d3904ef22c75b))
+
 ## [0.4.2](https://github.com/andrewtryder/ha-eversource/compare/v0.4.1...v0.4.2) (2026-10-26)
 
 
