@@ -21,8 +21,8 @@ from .binary_sensor import outage_device_info
 from .const import DOMAIN, RATE_CLASS_NAMES, TERRITORIES
 from .coordinator import EversourceRatesCoordinator
 from .entity_ids import sensor_object_id
-from .outage_coordinator import EversourceOutageCoordinator
 from .models import EversourceRates
+from .outage_coordinator import EversourceOutageCoordinator
 from .tariffs import SERVICE_AREA_NAMES, SUPPLY_PLAN_NAMES
 
 if TYPE_CHECKING:
