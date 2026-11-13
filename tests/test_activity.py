@@ -142,7 +142,7 @@ async def test_rate_activity_tracks_unchanged_changed_failure_and_recovery(
         assert hass.states.get(event_id).attributes["event_type"] == "rates_checked"
         assert await hass.config_entries.async_unload(entry.entry_id)
         await hass.async_block_till_done()
-        assert hass.states.get(event_id) is None
+        assert hass.states.get(event_id).state == STATE_UNAVAILABLE
 
 
 async def test_outage_activity_records_checks_changes_and_failures(
